@@ -306,28 +306,45 @@ tune_grid.workflow <- function(object, resamples, ..., param_info = NULL,
 
 # ------------------------------------------------------------------------------
 
-tune_grid_workflow <-
-  function(object, resamples, grid = 10, metrics = NULL, pset = NULL,
-           control = control_grid()) {
-    check_rset(resamples)
-    metrics <- check_metrics(metrics, object)
-    pset <- check_parameters(object, pset = pset, data = resamples$splits[[1]]$data)
-    check_workflow(object, pset = pset)
-    grid <- check_grid(grid, object, pset)
+tune_grid_workflow <- function(object,
+                               resamples,
+                               grid = 10,
+                               metrics = NULL,
+                               pset = NULL,
+                               control = control_grid()) {
+  check_rset(resamples)
+  metrics <- check_metrics(metrics, object)
+  pset <-
+    check_parameters(object,
+                     pset = pset,
+                     data = resamples$splits[[1]]$data,
+                     grid_names = names(grid))
+  check_workflow(object, pset = pset)
+  grid <- check_grid(grid, object, pset)
 
-    code_path <- quarterback(object)
+  # Save rset attributes, then fall back to a bare tibble
+  rset_info <- pull_rset_attributes(resamples)
+  resamples <- new_bare_tibble(resamples)
 
-    resamples <- rlang::eval_tidy(code_path)
+  code_path <- quarterback(object)
 
-    all_bad <- is_cataclysmic(resamples)
-    if (all_bad) {
-      warning("All models failed in tune_grid(). See the `.notes` column.",
-              call. = FALSE)
-    }
+  resamples <- rlang::eval_tidy(code_path)
 
-    class(resamples) <- unique(c("tune_results", class(resamples)))
-    save_attr(resamples, pset, metrics)
+  if (is_cataclysmic(resamples)) {
+    rlang::warn("All models failed in tune_grid(). See the `.notes` column.")
   }
+
+  workflow_output <- set_workflow(object, control)
+
+  new_tune_results(
+    x = resamples,
+    parameters = pset,
+    metrics = metrics,
+    outcomes = outcome_names(object),
+    rset_info = rset_info,
+    workflow = workflow_output
+  )
+}
 
 # ------------------------------------------------------------------------------
 
@@ -356,10 +373,39 @@ quarterback <- function(x) {
   )
 }
 
+
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+pull_rset_attributes <- function(x) {
+  excl_att <- c("names", "row.names")
+  att <- attributes(x)
+  att_nms <- names(att)
+  att_nms <- setdiff(att_nms, excl_att)
+  att$class <- setdiff(class(x), class(tibble()))
+  att$class <- att$class[att$class != "rset"]
+
+  lab <- try(pretty(x), silent = TRUE)
+  if (inherits(lab, "try-error")) {
+    lab <- NA_character_
+  }
+  list(att = att[att_nms], label = lab)
+}
+
 # ------------------------------------------------------------------------------
 
-save_attr <- function(x, param, metrics) {
-  attr(x, "parameters") <- param
-  attr(x, "metrics") <- metrics
-  x
+set_workflow <- function(workflow, control) {
+  if (control$save_workflow) {
+    if (!is.null(workflow$pre$actions$recipe)) {
+      rlang::inform(paste0(
+        "The workflow being saved contains a recipe, which is ",
+        format(object.size(workflow$pre$actions$recipe), units = "Mb", digits = 2),
+        " in memory. If this was not intentional, please set the control ",
+        "setting `save_workflow = FALSE`."
+      ))
+    }
+    workflow
+  } else {
+    NULL
+  }
 }

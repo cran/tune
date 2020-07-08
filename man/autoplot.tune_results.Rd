@@ -16,17 +16,18 @@
 \item{object}{A tibble of results from \code{\link[=tune_grid]{tune_grid()}} or \code{\link[=tune_bayes]{tune_bayes()}}.}
 
 \item{type}{A single character value. Choices are \code{"marginals"} (for a plot
-'of each predictor versus performance), \code{"parameters"} (each parameter versus
-search iteration), or \code{"performance"} (performance versus iteration). The
-latter two choices are only used for \code{\link[=tune_bayes]{tune_bayes()}}.}
+of each predictor versus performance; see Details below), \code{"parameters"}
+(each parameter versus search iteration), or \code{"performance"} (performance
+versus iteration). The latter two choices are only used for \code{\link[=tune_bayes]{tune_bayes()}}.}
 
 \item{metric}{A character vector or \code{NULL} for which metric to plot. By
 default, all metrics will be shown via facets.}
 
 \item{width}{A number for the width of the confidence interval bars when
-\code{type = "perfomance"}. A value of zero prevents them from being shown.}
+\code{type = "performance"}. A value of zero prevents them from being shown.}
 
-\item{...}{Not currently used.}
+\item{...}{For plots with a regular grid, this is passed to \code{format()} and is
+applied to a parameter used to color points. Otherwise, it is not used.}
 }
 \value{
 A \code{ggplot2} object.
@@ -35,11 +36,42 @@ A \code{ggplot2} object.
 Plot tuning search results
 }
 \details{
-The parameters are currently represented in their natural units.
+When the results of \code{tune_grid()} are used with \code{autoplot()}, it tries to
+determine whether a \emph{regular grid} was used.
+\subsection{Regular grids}{
 
-A single categorical tuning parameter is supported when other numeric
-parameters are also in the results. Any number of numeric tuning parameters
-can be used.
+For regular grids with one or more numeric tuning parameters, the parameter
+with the most unique values is used on the x-axis. If there are categorical
+parameters, the first is used to color the geometries. All other parameters
+are used in column faceting.
+
+The plot has the performance metric(s) on the y-axis. If there are multiple
+metrics, these are row-faceted.
+
+If there are more than five tuning parameters, the "marginal effects" plots
+are used instead.
+}
+
+\subsection{Irregular grids}{
+
+For space-filling or random grids, a \emph{marginal} effect plot is created. A
+panel is made for each numeric parameter so that each parameter is on the
+x-axis and performance is on the y-xis. If there are multiple metrics, these
+are row-faceted.
+
+A single categorical parameter is shown as colors. If there are two or more
+non-numeric parameters, an error is given. A similar result occurs is only
+non-numeric parameters are in the grid. In these cases, we suggest using
+\code{collect_metrics()} and \code{ggplot()} to create a plot that is appropriate for
+the data.
+
+If a parameter has an associated transformation associated with it (as
+determined by the parameter object used to create it), the plot shows the
+values in the transformed units (and is labeled with the transformation type).
+
+Parameters are labeled using the labels found in the parameter object
+\emph{except} when an identifier was used (e.g. \code{neighbors = tune("K")}).
+}
 }
 \examples{
 \donttest{

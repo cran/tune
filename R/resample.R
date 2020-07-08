@@ -139,6 +139,10 @@ resample_workflow <- function(workflow, resamples, metrics, control) {
 
   has_formula <- has_preprocessor_formula(workflow)
 
+  # Save rset attributes, then fall back to a bare tibble
+  rset_info <- pull_rset_attributes(resamples)
+  resamples <- new_bare_tibble(resamples)
+
   if (has_formula) {
     resamples <- resample_with_formula(resamples, workflow, metrics, control)
   } else {
@@ -151,10 +155,16 @@ resample_workflow <- function(workflow, resamples, metrics, control) {
     )
   }
 
-  # TODO - what class?
-  class(resamples) <- c("resample_results", class(resamples))
+  workflow_output <- set_workflow(workflow, control)
 
-  save_attr(resamples, parameters(workflow), metrics)
+  new_resample_results(
+    x = resamples,
+    parameters = parameters(workflow),
+    metrics = metrics,
+    outcomes = outcome_names(workflow),
+    rset_info = rset_info,
+    workflow = workflow_output
+  )
 }
 
 # ------------------------------------------------------------------------------

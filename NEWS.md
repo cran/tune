@@ -1,3 +1,36 @@
+# tune 0.1.1
+
+## Breaking Changes
+
+* `autoplot.tune_results()` now requires objects made by version 0.1.0 or higher of tune. 
+
+* `tune` objects no longer keep the `rset` class that they have from the `resamples` argument. 
+
+## Other Changes
+
+* `autoplot.tune_results()` now produces a different plot when the tuning grid is a regular grid (i.e. factorial or nearly factorial in nature). If there are 5+ parameters, the standard plot is produced. Non-regular grids are plotted in the same way (although see next bullet point). See `?autoplot.tune_results` for more information.
+
+* `autoplot.tune_results()` now transforms the parameter values for the plot. For example, if the `penalty` parameter was used for a regularized regression, the points are plotted on the log-10 scale (its default transformation). For non-regular grids, the facet labels show the transformation type (e.g. `"penalty (log-10)"` or `"cost (log-2)"`). For regular grid, the x-axis is scaled using `scale_x_continuous()`. 
+
+* Finally, `autoplot.tune_results()` now shows the parameter _labels_ in a plot. For example, if a k-nearest neighbors model was used with `neighbors = tune()`, the parameter will be labeled as `"# Nearest Neighbors"`. When an ID was used, such as `neighbors = tune("K")`, this is used to identify the parameter. 
+
+* In other plotting news, `coord_obs_pred()` has been included for regression models. When plotting the observed and predicted values from a model, this forces the x- and y-axis to be the same range and uses an aspect ratio of 1. 
+
+* The outcome names are saved in an attribute called `outcomes` to objects with class `tune_results`. Also, several accessor functions (named `.get_tune_*()) were added to more easily access such attributes.  
+
+* `conf_mat_resampled()` computes the average confusion matrix across resampling statistics for a single model.  
+
+* `show_best()`, and the `select_*()` functions will now use the first metric in the metric set if no metric is supplied. 
+
+* `filter_parameters()` can trim the `.metrics` column of unwanted results (as well as columns `.predictions` and `.extracts`) from `tune_*` objects. 
+
+* In concert with `dials` > 0.0.7, tuning engine-specific arguments is possible. Many known engine-specific tuning parameters and handled automatically. 
+
+* If a grid is given, parameters do not need to be finalized to be used in the `tune_*()` functions. 
+
+* Added a `save_workflow` argument to `control_*` functions that will result in the workflow object used to carry out tuning/fitting (regardless of whether a formula or recipe was given as input to the function) to be appended to the resulting `tune_results` object in a `workflow` attribute. The new `.get_tune_workflow()` function can be used to access the workflow.
+
+
 # tune 0.1.0
 
 ## Breaking Changes

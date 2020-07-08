@@ -247,6 +247,9 @@ tune_bayes_workflow <-
     start_time <- proc.time()[3]
 
     check_rset(resamples)
+    y_names <- outcome_names(object)
+    rset_info <- pull_rset_attributes(resamples)
+
     metrics <- check_metrics(metrics, object)
     metrics_data <- metrics_info(metrics)
     metrics_name <- metrics_data$.metric[1]
@@ -258,13 +261,16 @@ tune_bayes_workflow <-
     check_workflow(object, check_dials = is.null(param_info), pset = param_info)
 
     unsummarized <- check_initial(initial, param_info, object, resamples, metrics, control)
+
     mean_stats <- estimate_tune_results(unsummarized)
 
     check_time(start_time, control$time_limit)
 
     on.exit({
       cli::cli_alert_danger("Optimization stopped prematurely; returning current results.")
-      return(reup_rs(resamples, unsummarized))
+      out <- new_iteration_results(unsummarized, param_info, metrics, y_names,
+                                   rset_info, workflow = NULL)
+      return(out)
     })
 
     score_card <- initial_info(mean_stats, metrics_name, maximize)
@@ -324,8 +330,15 @@ tune_bayes_workflow <-
 
       param_msg(control, candidates)
       set.seed(control$seed[1] + i + 2)
-      tmp_res <- more_results(object, resamples = resamples, candidates = candidates, metrics = metrics, control = control,
-                              param_info = param_info)
+      tmp_res <-
+        more_results(
+          object,
+          resamples = resamples,
+          candidates = candidates,
+          metrics = metrics,
+          control = control,
+          param_info = param_info
+        )
 
       check_time(start_time, control$time_limit)
 
@@ -353,12 +366,23 @@ tune_bayes_workflow <-
       check_time(start_time, control$time_limit)
     }
 
-    unsummarized <- reup_rs(resamples, unsummarized)
+    workflow_output <- set_workflow(object, control)
+
+    # Reset `on.exit()` hook
     on.exit()
-    save_attr(unsummarized, param_info, metrics)
+
+    new_iteration_results(
+      x = unsummarized,
+      parameters = param_info,
+      metrics = metrics,
+      outcomes = y_names,
+      rset_info = rset_info,
+      workflow = workflow_output
+    )
   }
 
 create_initial_set <- function(param, n = NULL) {
+  check_param_objects(param)
   if (is.null(n)) {
     n <- nrow(param) + 1
   }
@@ -368,8 +392,11 @@ create_initial_set <- function(param, n = NULL) {
 
 # ------------------------------------------------------------------------------
 
-# TODO what happens to  logicals?
-
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param pset A `parameters` object.
+#' @param as_matrix A logical for the return type.
 encode_set <- function(x, pset, as_matrix = FALSE, ...) {
   # change the numeric variables to the transformed scale (if any)
   has_trans <- purrr::map_lgl(pset$object, ~ !is.null(.x$trans))
@@ -384,8 +411,12 @@ encode_set <- function(x, pset, as_matrix = FALSE, ...) {
   is_quant <- purrr::map_lgl(pset$object, inherits, "quant_param")
   # Convert all data to the [0, 1] scale based on their possible range (not on
   # their observed range)
-  x[, is_quant] <- purrr::map2_dfc(pset$object[is_quant], x[, is_quant],
-                                   encode_unit, direction = "forward")
+  if (any(is_quant)) {
+    new_vals <- purrr::map2(pset$object[is_quant], x[, is_quant], encode_unit, direction = "forward")
+    names(new_vals) <- names(x)[is_quant]
+    new_vals <- tibble::as_tibble(new_vals)
+    x[, is_quant] <- new_vals
+  }
 
   # Ensure that the right levels are used to create dummy variables
   if (any(!is_quant)) {
@@ -589,7 +620,11 @@ is_cataclysmic <- function(x) {
 
 
 
-
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param origin The calculation start time.
+#' @param limit The allowable time (in minutes).
 check_time <- function(origin, limit) {
   if (is.na(limit)) {
     return(invisible(NULL))

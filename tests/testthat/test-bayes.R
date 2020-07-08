@@ -98,7 +98,7 @@ test_that('tune model and recipe', {
   expect_equal(unique(res$id), folds$id)
   expect_equal(
     colnames(res$.metrics[[1]]),
-    c("cost", "num_comp", ".metric", ".estimator", ".estimate")
+    c("cost", "num_comp", ".metric", ".estimator", ".estimate", ".config")
   )
   res_est <- collect_metrics(res)
   expect_equal(nrow(res_est), iterT * 2)
@@ -156,7 +156,7 @@ test_that('tune recipe and model, which has_unknowns', {
   expect_equal(unique(res$id), folds$id)
   expect_equal(
     colnames(res$.metrics[[1]]),
-    c("mtry", "num_comp", ".metric", ".estimator", ".estimate")
+    c("mtry", "num_comp", ".metric", ".estimator", ".estimate", ".config")
   )
   res_est <- collect_metrics(res)
   expect_equal(nrow(res_est), iterT * 2)
@@ -334,4 +334,39 @@ test_that("ellipses with tune_bayes", {
                initial = iter1, iter = iter2, something = "wrong"),
     "The `...` are not used in this function but one or more objects"
   )
+})
+
+
+
+
+test_that("retain extra attributes", {
+
+  set.seed(4400)
+  wflow <- workflow() %>% add_recipe(rec_tune_1) %>% add_model(lm_mod)
+  pset <- dials::parameters(wflow) %>% update(num_comp = num_comp(c(1, 5)))
+  folds <- vfold_cv(mtcars)
+  res <- tune_bayes(wflow, resamples = folds, param_info = pset,
+                    initial = iter1, iter = iter2)
+
+  att <- attributes(res)
+  att_names <- names(att)
+  expect_true(any(att_names == "metrics"))
+  expect_true(any(att_names == "outcomes"))
+  expect_true(any(att_names == "parameters"))
+
+  expect_true(is.character(att$outcomes))
+  expect_true(att$outcomes == "mpg")
+  expect_true(inherits(att$parameters, "parameters"))
+  expect_true(inherits(att$metrics, "metric_set"))
+
+  expect_message(
+    res2 <- tune_bayes(wflow, resamples = folds, param_info = pset,
+                       initial = iter1, iter = iter2,
+                       control = control_bayes(save_workflow = TRUE)),
+    "being saved contains a recipe, which is"
+  )
+  expect_null(attr(res, "workflow"))
+  expect_true(inherits(attr(res2, "workflow"), "workflow"))
+
+
 })

@@ -1,3 +1,6 @@
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
 check_rset <- function(x) {
   if (!inherits(x, "rset")) {
     stop("The `resamples` argument should be an 'rset' object, such as the type ",
@@ -94,7 +97,19 @@ check_grid <- function(x, object, pset = NULL) {
   x
 }
 
-check_parameters <- function(object, pset = NULL, data) {
+needs_finalization <- function(x, nms = character(0)) {
+  # If an unknown engine-specific parameter, the object column is missing and
+  # no need for finalization
+  x <- x[!is.na(x$object), ]
+  # If the parameter is in a pre-defined grid, then no need to finalize
+  x <- x[!(x$id %in% nms),]
+  if (length(x) == 0) {
+    return(FALSE)
+  }
+  any(dials::has_unknowns(x$object))
+}
+
+check_parameters <- function(object, pset = NULL, data, grid_names = character(0)) {
   if (is.null(pset)) {
     pset <- parameters(object)
   }
@@ -105,26 +120,30 @@ check_parameters <- function(object, pset = NULL, data) {
   tune_param <- tune_args(object)
   tune_recipe <- tune_param$id[tune_param$source == "recipe"]
   tune_recipe <- length(tune_recipe) > 0
-  if (tune_recipe) {
-    rlang::abort(
-      paste(
-        "Some tuning parameters require finalization but there are recipe",
-        "parameters that require tuning. Please use `parameters()` to",
-        "finalize the parameter ranges."
-      )
-    )
-  }
-  msg <- "Creating pre-processing data to finalize unknown parameter"
-  unk_names <- pset$id[unk]
-  if (length(unk_names) == 1) {
-    msg <- paste0(msg, ": ", unk_names)
-  } else {
-    msg <- paste0(msg, "s: ", paste0("'", unk_names, "'", collapse = ", "))
-  }
 
-  tune_log(list(verbose = TRUE), split = NULL, msg, type = "info")
-  x <- workflows::.fit_pre(object, data)$pre$mold$predictors
-  pset$object <- purrr::map(pset$object, dials::finalize, x = x)
+  if (needs_finalization(pset, grid_names)) {
+    if (tune_recipe) {
+      rlang::abort(
+        paste(
+          "Some tuning parameters require finalization but there are recipe",
+          "parameters that require tuning. Please use `parameters()` to",
+          "finalize the parameter ranges."
+        )
+      )
+    }
+    msg <- "Creating pre-processing data to finalize unknown parameter"
+    unk_names <- pset$id[unk]
+    if (length(unk_names) == 1) {
+      msg <- paste0(msg, ": ", unk_names)
+    } else {
+      msg <- paste0(msg, "s: ", paste0("'", unk_names, "'", collapse = ", "))
+    }
+
+    tune_log(list(verbose = TRUE), split = NULL, msg, type = "info")
+
+    x <- workflows::.fit_pre(object, data)$pre$mold$predictors
+    pset$object <- purrr::map(pset$object, dials::finalize, x = x)
+  }
   pset
 }
 
@@ -160,6 +179,23 @@ check_installs <- function(x) {
   }
 }
 
+check_param_objects <- function(pset) {
+  params <- purrr::map_lgl(pset$object, inherits, "param")
+
+  if (!all(params)) {
+    rlang::abort(paste0(
+      "The workflow has arguments to be tuned that are missing some ",
+      "parameter objects: ",
+      paste0("'", pset$id[!params], "'", collapse = ", ")
+    ))
+  }
+  invisible(pset)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param check_dials A logical for check for a NULL parameter object.
 check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
   if (!inherits(x, "workflow")) {
     rlang::abort("The `object` argument should be a 'workflow' object.")
@@ -182,26 +218,14 @@ check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
       pset <- dials::parameters(x)
     }
 
-    params <- purrr::map_lgl(pset$object, inherits, "param")
+    check_param_objects(pset)
 
-    if (!all(params)) {
-      rlang::abort(paste0(
-        "The workflow has arguments to be tuned that are missing some ",
-        "parameter objects: ",
-        paste0("'", pset$id, "'", collapse = ", ")
-      ))
-    }
+    incompl <- dials::has_unknowns(pset$object)
 
-    quant_param <- purrr::map_lgl(pset$object, inherits, "quant_param")
-    quant_name <- pset$id[quant_param]
-    compl <- purrr::map_lgl(pset$object[quant_param],
-                     ~ !dials::is_unknown(.x$range$lower) &
-                       !dials::is_unknown(.x$range$upper))
-
-    if (any(!compl)) {
+    if (any(incompl)) {
       rlang::abort(paste0(
         "The workflow has arguments whose ranges are not finalized: ",
-        paste0("'", quant_name[!compl], "'", collapse = ", ")
+        paste0("'", pset$id[incompl], "'", collapse = ", ")
       ))
     }
   }
@@ -212,6 +236,10 @@ check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
   invisible(NULL)
 }
 
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param object A `workflow` object.
 check_metrics <- function(x, object) {
   mode <- workflows::pull_workflow_spec(object)$mode
 
@@ -261,6 +289,12 @@ check_metrics <- function(x, object) {
 
 bayes_msg <- "`initial` should be a positive integer or the results of [tune_grid()]"
 
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param wflow A `workflow` object.
+#' @param resamples An `rset` object.
+#' @param ctrl A `control_grid` object.
 check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
   if (is.null(x)) {
     rlang::abort(bayes_msg)
@@ -272,10 +306,20 @@ check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
       msg <- paste0(" Generating a set of ", nrow(x), " initial parameter results")
       tune_log(ctrl, split = NULL, msg, type = "go")
     }
-    x <- tune_grid(wflow, resamples = resamples, grid = x, metrics = metrics,
-                   param_info = pset,
-                   control = control_grid(extract = ctrl$extract,
-                                          save_pred = ctrl$save_pred))
+
+    x <- tune_grid(
+      wflow,
+      resamples = resamples,
+      grid = x,
+      metrics = metrics,
+      param_info = pset,
+      control = control_grid(extract = ctrl$extract, save_pred = ctrl$save_pred)
+    )
+
+    # Strip off `tune_results` class since we add on an `iteration_results`
+    # class later.
+    x <- new_bare_tibble(x)
+
     if (ctrl$verbose) {
       tune_log(ctrl, split = NULL, "Initialization complete", type = "success")
       message()
@@ -284,6 +328,14 @@ check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
     if (!inherits(x, "tune_results")) {
       rlang::abort(bayes_msg)
     }
+
+    if (ctrl$save_pred & !any(names(x) == ".predictions")) {
+      rlang::abort("`save_pred` can only be used if the initial results saved predictions.")
+    }
+    if (!is.null(ctrl$extract) & !any(names(x) == ".extracts")) {
+      rlang::abort("`extract` can only be used if the initial results has extractions.")
+    }
+
   }
   if (!any(names(x) == ".iter")) {
     x <- x %>% dplyr::mutate(.iter = 0)
@@ -327,6 +379,11 @@ check_class_or_null <- function(x, cls = "numeric") {
   inherits(x, cls) | is.null(x)
 }
 
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+#' @param cls A character vector of possible classes
+#' @param where A character string for the calling function.
 val_class_or_null <- function(x, cls = "numeric", where = NULL) {
   cl <- match.call()
   fine <- check_class_or_null(x, cls)
@@ -345,6 +402,9 @@ check_class_and_single <- function(x, cls = "numeric") {
   isTRUE(inherits(x, cls) & length(x) == 1)
 }
 
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
 val_class_and_single <- function(x, cls = "numeric", where = NULL) {
   cl <- match.call()
   fine <- check_class_and_single(x, cls)

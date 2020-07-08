@@ -68,7 +68,7 @@ test_that('tune model only (with recipe, multi-predict)', {
   expect_equal(res$id, folds$id)
   expect_equal(
     colnames(res$.metrics[[1]]),
-    c("cost", ".metric", ".estimator", ".estimate")
+    c("cost", ".metric", ".estimator", ".estimate", ".config")
   )
   res_est <- collect_metrics(res)
   expect_equal(nrow(res_est), nrow(grid) * 2)
@@ -90,7 +90,7 @@ test_that('tune model and recipe', {
   expect_equal(res$id, folds$id)
   expect_equal(
     colnames(res$.metrics[[1]]),
-    c("cost", "num_comp", ".metric", ".estimator", ".estimate")
+    c("cost", "num_comp", ".metric", ".estimator", ".estimate", ".config")
   )
   res_est <- collect_metrics(res)
   expect_equal(nrow(res_est), nrow(grid) * 2)
@@ -195,8 +195,8 @@ test_that("tune model only - failure in recipe is caught elegantly", {
   expect_length(notes, 2L)
 
   # recipe failed - no models run
-  expect_equal(extracts, list(NULL, NULL))
-  expect_equal(predictions, list(NULL, NULL))
+  expect_equivalent(extracts, list(NULL, NULL))
+  expect_equivalent(predictions, list(NULL, NULL))
 })
 
 test_that("tune model only - failure in formula is caught elegantly", {
@@ -227,8 +227,8 @@ test_that("tune model only - failure in formula is caught elegantly", {
   expect_length(notes, 2L)
 
   # formula failed - no models run
-  expect_equal(extracts, list(NULL, NULL))
-  expect_equal(predictions, list(NULL, NULL))
+  expect_equivalent(extracts, list(NULL, NULL))
+  expect_equivalent(predictions, list(NULL, NULL))
 })
 
 test_that("tune model and recipe - failure in recipe is caught elegantly", {
@@ -293,3 +293,73 @@ test_that("ellipses with tune_grid", {
     "The `...` are not used in this function but one or more objects"
   )
 })
+
+
+test_that("determining the grid type", {
+  grid_1 <- expand.grid(a = 1:100, b = letters[1:2])
+  expect_true(tune:::is_regular_grid(grid_1))
+  expect_true(tune:::is_regular_grid(grid_1[-(1:10),]))
+  expect_false(tune:::is_regular_grid(grid_1[-(1:100),]))
+  set.seed(1932)
+  grid_2 <- data.frame(a = runif(length(letters)), b = letters)
+  expect_false(tune:::is_regular_grid(grid_2))
+})
+
+
+
+test_that("retain extra attributes", {
+
+  set.seed(4400)
+  wflow <- workflow() %>% add_recipe(rec_no_tune_1) %>% add_model(svm_mod)
+  pset <- dials::parameters(wflow)
+  grid <- grid_regular(pset, levels = 3)
+  folds <- vfold_cv(mtcars)
+  res <- tune_grid(wflow, resamples = folds, grid = grid)
+
+  att <- attributes(res)
+  att_names <- names(att)
+  expect_true(any(att_names == "metrics"))
+  expect_true(any(att_names == "outcomes"))
+  expect_true(any(att_names == "parameters"))
+
+  expect_true(is.character(att$outcomes))
+  expect_true(att$outcomes == "mpg")
+  expect_true(inherits(att$parameters, "parameters"))
+  expect_true(inherits(att$metrics, "metric_set"))
+
+  set.seed(4400)
+  wflow <- workflow() %>% add_formula(mpg ~ .) %>% add_model(svm_mod)
+  pset <- dials::parameters(wflow)
+  grid <- grid_regular(pset, levels = 3)
+  folds <- vfold_cv(mtcars)
+  res <- tune_grid(wflow, resamples = folds, grid = grid)
+
+  att <- attributes(res)
+  att_names <- names(att)
+  expect_true(any(att_names == "metrics"))
+  expect_true(any(att_names == "outcomes"))
+  expect_true(any(att_names == "parameters"))
+
+  expect_true(is.character(att$outcomes))
+  expect_true(att$outcomes == "mpg")
+  expect_true(inherits(att$parameters, "parameters"))
+  expect_true(inherits(att$metrics, "metric_set"))
+
+  res2 <- tune_grid(wflow, resamples = folds, grid = grid,
+                    control = control_grid(save_workflow = TRUE))
+  expect_null(attr(res, "workflow"))
+  expect_true(inherits(attr(res2, "workflow"), "workflow"))
+
+  wflow2 <- workflow() %>%
+    add_recipe(recipes::recipe(mpg ~ ., mtcars)) %>%
+    add_model(svm_mod)
+  pset2 <- dials::parameters(wflow2)
+  grid2 <- grid_regular(pset2, levels = 3)
+
+  expect_message(
+    tune_grid(wflow2, resamples = folds, grid = grid2,
+              control = control_grid(save_workflow = TRUE)),
+    "being saved contains a recipe, which is"
+  )
+})
+

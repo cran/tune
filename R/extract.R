@@ -40,7 +40,8 @@ pulley <- function(resamples, res, col) {
     pulled_vals <- tidyr::nest(pulled_vals, -starts_with("id"), .key = !!col)
   }
 
-  res <- full_join(resamples, pulled_vals, by = id_cols)
+  res <- new_bare_tibble(resamples)
+  res <- full_join(res, pulled_vals, by = id_cols)
   res <- reup_rs(resamples, res)
   res
 }
@@ -107,16 +108,19 @@ pull_notes <- function(resamples, res, control) {
 
 # ------------------------------------------------------------------------------
 
-append_metrics <- function(collection, predictions, workflow, metrics, split) {
+append_metrics <- function(collection, predictions, workflow, metrics, split, .config = NULL) {
   if (inherits(predictions, "try-error")) {
     return(collection)
   }
   tmp_est <- estimate_metrics(predictions, metrics, workflow)
   tmp_est <- cbind(tmp_est, labels(split))
+  if (!rlang::is_null(.config)) {
+    tmp_est <- cbind(tmp_est, .config)
+  }
   dplyr::bind_rows(collection, tmp_est)
 }
 
-append_predictions <- function(collection, predictions, split, control) {
+append_predictions <- function(collection, predictions, split, control, .config = NULL) {
   if (!control$save_pred) {
     return(NULL)
   }
@@ -124,10 +128,13 @@ append_predictions <- function(collection, predictions, split, control) {
     return(collection)
   }
   predictions <- cbind(predictions, labels(split))
+  if (!rlang::is_null(.config)) {
+    predictions <- cbind(predictions, .config)
+  }
   dplyr::bind_rows(collection, predictions)
 }
 
-append_extracts <- function(collection, workflow, param, split, ctrl) {
+append_extracts <- function(collection, workflow, param, split, ctrl, .config = NULL) {
   if (any(names(param) == ".submodels")) {
     param <- param %>% dplyr::select(-.submodels)
   }
@@ -140,6 +147,10 @@ append_extracts <- function(collection, workflow, param, split, ctrl) {
         extract_details(workflow, ctrl$extract)
       )
     )
+
+  if (!rlang::is_null(.config)) {
+    extracts <- cbind(extracts, .config)
+  }
 
   dplyr::bind_rows(collection, extracts)
 }

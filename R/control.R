@@ -30,18 +30,32 @@
 #' @export
 control_grid <- function(verbose = FALSE, allow_par = TRUE,
                          extract = NULL, save_pred = FALSE,
-                         pkgs = NULL) {
+                         pkgs = NULL, save_workflow = FALSE) {
   # add options for  seeds per resample
 
   val_class_and_single(verbose, "logical", "control_grid()")
   val_class_and_single(allow_par, "logical", "control_grid()")
   val_class_and_single(save_pred, "logical", "control_grid()")
+  val_class_and_single(save_workflow, "logical", "control_grid()")
   val_class_or_null(pkgs, "character", "control_grid()")
   val_class_or_null(extract, "function", "control_grid()")
 
 
-  list(verbose = verbose, allow_par = allow_par, extract = extract,
-       save_pred = save_pred, pkgs = pkgs)
+  res <- list(verbose = verbose,
+              allow_par = allow_par,
+              extract = extract,
+              save_pred = save_pred,
+              pkgs = pkgs,
+              save_workflow = save_workflow)
+
+  class(res) <- c("control_grid", "control_resamples")
+  res
+}
+
+#' @export
+print.control_grid <- function(x, ...) {
+  cat("grid/resamples control object\n")
+  invisible(x)
 }
 
 #' @rdname control_grid
@@ -77,6 +91,8 @@ control_resamples <- control_grid
 #'   be saved for each model _evaluated_.
 #' @param pkgs An optional character string of R package names that should be
 #'   loaded (by namespace) during parallel processing.
+#' @param save_workflow A logical for whether the workflow should be appended
+#' to the output as an attribute.
 #' @details
 #'
 #' For `extract`, this function can be used to output the model object, the
@@ -106,11 +122,13 @@ control_bayes <-
            extract = NULL,
            save_pred = FALSE,
            time_limit = NA,
-           pkgs = NULL) {
+           pkgs = NULL,
+           save_workflow = FALSE) {
     # add options for seeds per resample
 
     val_class_and_single(verbose, "logical", "control_bayes()")
     val_class_and_single(save_pred, "logical", "control_bayes()")
+    val_class_and_single(save_workflow, "logical", "control_bayes()")
     val_class_and_single(no_improve, c("numeric", "integer"), "control_bayes()")
     val_class_and_single(uncertain, c("numeric", "integer"), "control_bayes()")
     val_class_and_single(seed, c("numeric", "integer"), "control_bayes()")
@@ -124,14 +142,24 @@ control_bayes <-
       )
     }
 
-    list(
-      verbose = verbose,
-      no_improve = no_improve,
-      uncertain = uncertain,
-      seed = seed,
-      extract = extract,
-      save_pred = save_pred,
-      time_limit = time_limit,
-      pkgs = pkgs
-    )
+    res <-
+      list(
+        verbose = verbose,
+        no_improve = no_improve,
+        uncertain = uncertain,
+        seed = seed,
+        extract = extract,
+        save_pred = save_pred,
+        time_limit = time_limit,
+        pkgs = pkgs,
+        save_workflow = save_workflow
+      )
+
+    class(res) <- "control_bayes"
+    res
   }
+
+print.control_bayes <- function(x, ...) {
+  cat("bayes control object\n")
+  invisible(x)
+}

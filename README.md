@@ -1,22 +1,27 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# tune
+# tune <a href='https://tune.tidymodels.org'><img src='man/figures/logo.png' align="right" height="139" /></a>
 
 <!-- badges: start -->
 
 [![R build
-status](https://github.com/tidymodels/tune/workflows/R-CMD-check/badge.svg)](https://github.com/tidymodels/tune)
+status](https://github.com/tidymodels/tune/workflows/R-CMD-check/badge.svg)](https://github.com/tidymodels/tune/actions)
 [![Codecov test
 coverage](https://codecov.io/gh/tidymodels/tune/branch/master/graph/badge.svg)](https://codecov.io/gh/tidymodels/tune?branch=master)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
-
+[![CRAN
+status](https://www.r-pkg.org/badges/version/tune)](https://CRAN.R-project.org/package=tune)
 <!-- badges: end -->
 
-The goal of tune is to facilitate the tuning of hyper-parameters the
-tidymodels packages. It relies heavily on `recipes`, `parsnip`, and
-`dials`.
+## Overview
+
+The goal of tune is to facilitate hyperparameter tuning for the
+tidymodels packages. It relies heavily on
+[recipes](https://recipes.tidymodels.org/),
+[parsnip](https://parsnip.tidymodels.org/), and
+[dials](https://dials.tidymodels.org/).
 
 ## Installation
 
@@ -26,7 +31,7 @@ Install from CRAN:
 install.packages("tune", repos = "http://cran.r-project.org") #or your local mirror
 ```
 
-or you can install the current development version using
+or you can install the current development version using:
 
 ``` r
 devtools::install_github("tidymodels/tune")
@@ -34,17 +39,47 @@ devtools::install_github("tidymodels/tune")
 
 ## Examples
 
-There are a few package vignettes, the first being the [*Getting
-Started*](https://tidymodels.github.io/tune/articles/getting_started.html)
-document. Other examples resources:
+There are several package vignettes, as well as articles available at
+[tidymodels.org](https://www.tidymodels.org/), demonstrating how to use
+tune.
 
-  - [basic grid
-    search](https://tidymodels.github.io/tune/articles/grid.html)
-  - [Bayesian optimization
-    example](https://tidymodels.github.io/tune/articles/extras/svm_classification.html)
-  - [an advanced text mining
-    example](https://tidymodels.github.io/tune/articles/extras/text_analysis.html)
-  - [notes on optimizations and parallel
-    processing](https://tidymodels.github.io/tune/articles/extras/optimizations.html)
-  - [details on acquisition function for scoring parameter
-    combinations](https://tidymodels.github.io/tune/articles/acquisition_functions.html)
+Good places to begin include:
+
+  - [Getting started with cell segmentation
+    data](https://www.tidymodels.org/start/tuning/)
+  - [Getting started with Ames housing
+    data](https://tune.tidymodels.org/articles/getting_started.html)
+
+More advanced resources available are:
+
+  - [Basic grid search for an SVM
+    model](https://www.tidymodels.org/learn/work/tune-svm/)
+  - [Iterative Bayesian optimization of a classification
+    model](https://www.tidymodels.org/learn/work/bayes-opt/)
+  - [Advanced text mining
+    example](https://tune.tidymodels.org/articles/extras/text_analysis.html)
+  - [Notes on optimizations and parallel
+    processing](https://tune.tidymodels.org/articles/extras/optimizations.html)
+  - [Details on acquisition function for scoring parameter
+    combinations](https://tune.tidymodels.org/articles/acquisition_functions.html)
+
+## Contributing
+
+This project is released with a [Contributor Code of
+Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html).
+By contributing to this project, you agree to abide by its terms.
+
+  - For questions and discussions about tidymodels packages, modeling,
+    and machine learning, please [post on RStudio
+    Community](https://rstd.io/tidymodels-community).
+
+  - If you think you have encountered a bug, please [submit an
+    issue](https://github.com/tidymodels/tune/issues).
+
+  - Either way, learn how to create and share a
+    [reprex](https://rstd.io/reprex) (a minimal, reproducible example),
+    to clearly communicate about your code.
+
+  - Check out further details on [contributing guidelines for tidymodels
+    packages](https://www.tidymodels.org/contribute/) and [how to get
+    help](https://www.tidymodels.org/help/).

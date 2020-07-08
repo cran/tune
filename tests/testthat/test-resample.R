@@ -111,8 +111,8 @@ test_that("failure in recipe is caught elegantly", {
   # Known failure in the recipe
   expect_true(any(grepl("recipe", note)))
 
-  expect_equal(extract, list(NULL, NULL))
-  expect_equal(predictions, list(NULL, NULL))
+  expect_equivalent(extract, list(NULL, NULL))
+  expect_equivalent(predictions, list(NULL, NULL))
 })
 
 test_that("classification models generate correct error message", {
@@ -142,8 +142,8 @@ test_that("classification models generate correct error message", {
   # Known failure in the recipe
   expect_true(all(grepl("outcome should be a factor", note)))
 
-  expect_equal(extract, list(NULL, NULL))
-  expect_equal(predictions, list(NULL, NULL))
+  expect_equivalent(extract, list(NULL, NULL))
+  expect_equivalent(predictions, list(NULL, NULL))
 })
 
 
@@ -232,5 +232,46 @@ test_that("argument order gives warnings for recipe/formula", {
   expect_warning(
     fit_resamples(mpg ~ ., lin_mod, folds),
     "is deprecated as of lifecycle"
+  )
+})
+
+
+
+test_that("retain extra attributes", {
+
+  set.seed(6735)
+  folds <- vfold_cv(mtcars, v = 2)
+
+  lin_mod <- linear_reg() %>%
+    set_engine("lm")
+
+  res <- lin_mod %>%
+    fit_resamples(mpg ~ ., folds)
+
+  att <- attributes(res)
+  att_names <- names(att)
+  expect_true(any(att_names == "metrics"))
+  expect_true(any(att_names == "outcomes"))
+  expect_true(any(att_names == "parameters"))
+
+  expect_true(is.character(att$outcomes))
+  expect_true(att$outcomes == "mpg")
+  expect_true(inherits(att$parameters, "parameters"))
+  expect_true(inherits(att$metrics, "metric_set"))
+
+  res2 <- lin_mod %>%
+    fit_resamples(mpg ~ ., folds,
+                  control = control_resamples(save_workflow = TRUE))
+  expect_null(attr(res, "workflow"))
+  expect_true(inherits(attr(res2, "workflow"), "workflow"))
+
+  expect_message(
+    fit_resamples(
+      lin_mod,
+      recipes::recipe(mpg ~ ., mtcars),
+      folds,
+      control = control_resamples(save_workflow = TRUE)
+    ),
+    "being saved contains a recipe, which is"
   )
 })

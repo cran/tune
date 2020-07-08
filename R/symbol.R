@@ -69,3 +69,11 @@ is_windows <- function () {
 }
 
 # nocov end
+
+#' Get colors for tune text.
+#'
+#' @keywords internal
+#' @export
+#' @rdname empty_ellipses
+get_tune_colors <- function() tune_color
+
