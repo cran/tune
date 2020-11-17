@@ -11,6 +11,7 @@
 #'  used to filter the predicted values before processing. This tibble should
 #'  only have columns for each tuning parameter identifier (e.g. `"my_param"`
 #'  if `tune("my_param")` was used).
+#' @param ... Not currently used.
 #' @return A tibble. The column names depend on the results and the mode of the
 #' model.
 #'
@@ -73,8 +74,9 @@
 #'
 #' grid <- tibble(df = 3:6)
 #'
-#' resampled <- tune_grid(spline_rec, lm_mod, resamples = car_folds,
-#'                        control = ctrl, grid = grid)
+#' resampled <-
+#' lm_mod %>%
+#' tune_grid(spline_rec, resamples = car_folds, control = ctrl, grid = grid)
 #'
 #' collect_predictions(resampled) %>% arrange(.row)
 #' collect_predictions(resampled, summarize = TRUE) %>% arrange(.row)
@@ -295,20 +297,34 @@ average_predictions <- function(x, grid = NULL) {
 
 #' @export
 #' @rdname collect_predictions
-collect_metrics <- function(x, summarize = TRUE) {
-  if (!inherits(x, "tune_results")) {
-    rlang::abort(
-      paste0(
-        "`x` should be an object produced by one of the `tune_*()` functions,",
-        "`fit_resamples()` or `last_fit()`."
-      )
-    )
-  }
+collect_metrics <- function(x, ...) {
+  UseMethod("collect_metrics")
+}
 
+#' @export
+collect_metrics.default <- function(x, ...) {
+  rlang::abort("No `collect_metric()` exists for this type of object.")
+}
+
+#' @export
+#' @rdname collect_predictions
+collect_metrics.tune_results <- function(x, summarize = TRUE, ...) {
   if (inherits(x, "last_fit")) {
     return(x$.metrics[[1]])
   }
 
+  if (summarize) {
+    res <- estimate_tune_results(x)
+  } else {
+    res <- collector(x, coll_col = ".metrics")
+  }
+  res
+}
+
+#' @export
+#' @rdname collect_predictions
+collect_metrics.tune_race <- function(x, summarize = TRUE, ...) {
+  x <- dplyr::select(x, -.order)
   if (summarize) {
     res <- estimate_tune_results(x)
   } else {
@@ -326,7 +342,9 @@ collector <- function(x, coll_col = ".predictions") {
   }
   x <- dplyr::select(x, dplyr::starts_with("id"), !!!keep_cols)
   x <- tidyr::unnest(x, cols = c(dplyr::one_of(coll_col)))
-  x
+  arrange_cols <- c(".iter", ".config")
+  arrange_cols <- arrange_cols[(arrange_cols %in% names(x))]
+  arrange(x, !!!rlang::syms(arrange_cols))
 }
 
 #' @export
@@ -365,13 +383,15 @@ estimate_tune_results <- function(x, ...) {
     dplyr::ungroup()
 
   if (".config" %in% param_names) {
-    join_names <- param_names[!(param_names %in% ".config")]
+    arrange_names <- c(".iter", ".config")
+    arrange_names <- arrange_names[(arrange_names %in% param_names)]
+    join_names <- param_names[!(param_names %in% arrange_names)]
     x <- dplyr::inner_join(
-      dplyr::select(x, -.config),
+      dplyr::select(x, !arrange_names),
       x,
       by = c(join_names, ".metric", ".estimator", "mean", "n", "std_err")
     ) %>%
-      dplyr::arrange(.config)
+      dplyr::arrange(!!!rlang::syms(arrange_names))
   }
   x
 }

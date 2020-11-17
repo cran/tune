@@ -40,7 +40,7 @@
 #'         and/or post-processing parameters, the minimum number of fits are
 #'         used. For example, if the number of PCA components in a recipe step
 #'         are being tuned over three values (along with model tuning
-#'         parameters), only three recipes are are trained. The alternative
+#'         parameters), only three recipes are trained. The alternative
 #'         would be to re-train the same recipe multiple times for each model
 #'         tuning parameter.
 #' }
@@ -62,7 +62,7 @@
 #' When provided, the grid should have column names for each parameter and
 #'  these should be named by the parameter name or `id`. For example, if a
 #'  parameter is marked for optimization using `penalty = tune()`, there should
-#'  be a column names `tune`. If the optional identifier is used, such as
+#'  be a column named `penalty`. If the optional identifier is used, such as
 #'  `penalty = tune(id = 'lambda')`, then the corresponding column name should
 #'  be `lambda`.
 #'
@@ -159,6 +159,7 @@
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
+#' library(workflows)
 #' library(ggplot2)
 #'
 #' # ---------------------------------------------------------------------------
@@ -213,6 +214,21 @@
 #'
 #' autoplot(svm_res, metric = "rmse") +
 #'   scale_x_log10()
+#'
+#' # ---------------------------------------------------------------------------
+#'
+#' # Using a variables preprocessor with a workflow
+#'
+#' # Rather than supplying a preprocessor (like a recipe) and a model directly
+#' # to `tune_grid()`, you can also wrap them up in a workflow and pass
+#' # that along instead (note that this doesn't do any preprocessing to
+#' # the variables, it passes them along as-is).
+#' wf <- workflow() %>%
+#'   add_variables(outcomes = mpg, predictors = everything()) %>%
+#'   add_model(svm_mod)
+#'
+#' set.seed(3254)
+#' svm_res_wf <- tune_grid(wf, resamples = folds, grid = 7)
 #' }
 #' @export
 tune_grid <- function(object, ...) {
@@ -226,34 +242,6 @@ tune_grid.default <- function(object, ...) {
     "a model or workflow."
   )
   rlang::abort(msg)
-}
-
-#' @export
-tune_grid.recipe <- function(object, model, resamples, ..., param_info = NULL,
-                             grid = 10, metrics = NULL, control = control_grid()) {
-
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "tune_grid.recipe()",
-                            details = deprecate_msg(match.call(), "tune_grid"))
-  empty_ellipses(...)
-
-  tune_grid(model, preprocessor = object, resamples = resamples,
-            param_info = param_info, grid = grid,
-            metrics = metrics, control = control)
-}
-
-#' @export
-tune_grid.formula <- function(formula, model, resamples, ..., param_info = NULL,
-                              grid = 10, metrics = NULL, control = control_grid()) {
-
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "tune_grid.formula()",
-                            details = deprecate_msg(match.call(), "tune_grid"))
-  empty_ellipses(...)
-
-  tune_grid(model, preprocessor = formula, resamples = resamples,
-            param_info = param_info, grid = grid,
-            metrics = metrics, control = control)
 }
 
 #' @export
@@ -277,12 +265,12 @@ tune_grid.model_spec <- function(object, preprocessor, resamples, ...,
     wflow <- add_formula(wflow, preprocessor)
   }
 
-  tune_grid_workflow(
+  tune_grid(
     wflow,
     resamples = resamples,
+    param_info = param_info,
     grid = grid,
     metrics = metrics,
-    pset = param_info,
     control = control
   )
 }
@@ -293,6 +281,12 @@ tune_grid.workflow <- function(object, resamples, ..., param_info = NULL,
                                grid = 10, metrics = NULL, control = control_grid()) {
 
   empty_ellipses(...)
+
+  # Disallow `NULL` grids in `tune_grid()`, as this is the special signal
+  # used when no tuning is required
+  if (is.null(grid)) {
+    rlang::abort(grid_msg)
+  }
 
   tune_grid_workflow(
     object,
@@ -306,73 +300,65 @@ tune_grid.workflow <- function(object, resamples, ..., param_info = NULL,
 
 # ------------------------------------------------------------------------------
 
-tune_grid_workflow <- function(object,
+tune_grid_workflow <- function(workflow,
                                resamples,
                                grid = 10,
                                metrics = NULL,
                                pset = NULL,
-                               control = control_grid()) {
+                               control = control_grid(),
+                               rng = TRUE) {
   check_rset(resamples)
-  metrics <- check_metrics(metrics, object)
-  pset <-
-    check_parameters(object,
-                     pset = pset,
-                     data = resamples$splits[[1]]$data,
-                     grid_names = names(grid))
-  check_workflow(object, pset = pset)
-  grid <- check_grid(grid, object, pset)
+
+  metrics <- check_metrics(metrics, workflow)
+
+  pset <- check_parameters(
+    workflow = workflow,
+    pset = pset,
+    data = resamples$splits[[1]]$data,
+    grid_names = names(grid)
+  )
+
+  check_workflow(workflow, pset = pset)
+
+  grid <- check_grid(
+    grid = grid,
+    workflow = workflow,
+    pset = pset
+  )
 
   # Save rset attributes, then fall back to a bare tibble
   rset_info <- pull_rset_attributes(resamples)
   resamples <- new_bare_tibble(resamples)
 
-  code_path <- quarterback(object)
-
-  resamples <- rlang::eval_tidy(code_path)
+  resamples <- tune_grid_loop(
+    resamples = resamples,
+    grid = grid,
+    workflow = workflow,
+    metrics = metrics,
+    control = control,
+    rng = rng
+  )
 
   if (is_cataclysmic(resamples)) {
-    rlang::warn("All models failed in tune_grid(). See the `.notes` column.")
+    rlang::warn("All models failed. See the `.notes` column.")
   }
 
-  workflow_output <- set_workflow(object, control)
+  outcomes <- reduce_all_outcome_names(resamples)
+  resamples[[".all_outcome_names"]] <- NULL
+
+  workflow <- set_workflow(workflow, control)
 
   new_tune_results(
     x = resamples,
     parameters = pset,
     metrics = metrics,
-    outcomes = outcome_names(object),
+    outcomes = outcomes,
     rset_info = rset_info,
-    workflow = workflow_output
+    workflow = workflow
   )
 }
 
 # ------------------------------------------------------------------------------
-
-quarterback <- function(x) {
-  y <- dials::parameters(x)
-  sources <- unique(y$source)
-  has_form <- has_preprocessor_formula(x)
-  tune_rec <- any(sources == "recipe") & !has_form
-  tune_model <- any(sources == "model_spec")
-
-  args <- list(
-    resamples = expr(resamples),
-    grid = expr(grid),
-    workflow = expr(object),
-    metrics = expr(metrics),
-    control = expr(control)
-  )
-
-  dplyr::case_when(
-    tune_rec & !tune_model ~ rlang::call2("tune_rec", !!!args),
-    tune_rec &  tune_model ~ rlang::call2("tune_rec_and_mod", !!!args),
-    has_form &  tune_model ~ rlang::call2("tune_mod_with_formula", !!!args),
-    !tune_rec &  tune_model ~ rlang::call2("tune_mod_with_recipe", !!!args),
-    has_form & !tune_model ~ rlang::call2("tune_nothing_with_formula", !!!args),
-    TRUE ~ rlang::call2("tune_nothing_with_recipe", !!!args)
-  )
-}
-
 
 #' @export
 #' @keywords internal

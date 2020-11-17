@@ -3,6 +3,7 @@
 #' @importFrom dplyr distinct arrange rename mutate_if starts_with inner_join
 #' @importFrom dplyr last
 #' @importFrom tibble tibble lst is_tibble as_tibble
+#' @importFrom purrr map_int
 #' @importFrom rlang call2 ns_env is_quosure is_quosures quo_get_expr call_name
 #' @importFrom rlang is_false eval_tidy expr sym syms env_get is_function :=
 #' @importFrom rlang is_missing %||%
@@ -20,7 +21,7 @@
 #' @importFrom ggplot2 facet_grid geom_line aes_string aes_
 #' @importFrom cli cli_alert_danger cli_alert_info cli_alert_warning
 #' @importFrom cli cli_alert_success cli_alert
-#' @importFrom foreach foreach getDoParName
+#' @importFrom foreach foreach getDoParName %dopar%
 
 # ------------------------------------------------------------------------------
 # Only a small number of functions in workflows.
@@ -30,26 +31,17 @@
 
 # ------------------------------------------------------------------------------
 
-#' @importFrom dials parameters
-#' @export
-dials::parameters
-
-#' @importFrom ggplot2 autoplot
-#' @export
-ggplot2::autoplot
-
-# ------------------------------------------------------------------------------
-
 utils::globalVariables(
   c("engine", "name", "func", "parsnip", "call_name", ".step", "call_info",
     "component", "component_id", "id", "control", ".pred", ".metric",
     ".estimator", ".estimate", "n", "note", "object", "splits", "grid",
     "resamples", ".iter", "mean", ".submodels", "metrics", "data", ".mean",
-    ".sd", "rs_iter", "pkg", ".pred_class", "std_err", "const", "objective",
+    ".sd", "iteration", "pkg", ".pred_class", "std_err", "const", "objective",
     "delta", "sd_trunc", "snr", "z", "..val", "max_val", "has_submodel", "res",
     ".extracts", ".metrics", "value", ".notes", ".loss", ".bound",
     ".column", ".totals", ".value", "direction", ".config", "Freq", "Prediction",
-    "Truth")
+    "Truth", ".seed", ".order", ".iter_model", ".iter_preprocessor",
+    ".iter_config", ".msg_model", "# resamples")
   )
 
 # ------------------------------------------------------------------------------

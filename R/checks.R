@@ -21,37 +21,48 @@ check_rset <- function(x) {
 
 grid_msg <- "`grid` should be a positive integer or a data frame."
 
-check_grid <- function(x, object, pset = NULL) {
+check_grid <- function(grid, workflow, pset = NULL) {
+  # `NULL` grid is the signal that we are using `fit_resamples()`
+  if (is.null(grid)) {
+    return(grid)
+  }
+
   if (is.null(pset)) {
-    pset <- dials::parameters(object)
+    pset <- dials::parameters(workflow)
   }
 
   if (nrow(pset) == 0L) {
     msg <- paste0(
       "No tuning parameters have been detected, ",
       "performance will be evaluated using the resamples with no tuning. ",
-      "Did you want [fit_resamples()]?"
+      "Did you want to [tune()] parameters?"
     )
     rlang::warn(msg)
-    return(x)
+
+    # Return `NULL` as the new `grid`, like what is used in `fit_resamples()`
+    return(NULL)
   }
 
-  if (is.null(x)) {
-    rlang::abort(grid_msg)
-  }
-
-  if (!is.numeric(x)) {
-    if (!is.data.frame(x)) {
+  if (!is.numeric(grid)) {
+    if (!is.data.frame(grid)) {
       rlang::abort(grid_msg)
     }
 
-    tune_tbl <- tune_args(object)
+    grid_distinct <- distinct(grid)
+    if (!identical(nrow(grid_distinct), nrow(grid))) {
+      rlang::warn(
+        "Duplicate rows in grid of tuning combinations found and removed."
+      )
+    }
+    grid <- grid_distinct
+
+    tune_tbl <- tune_args(workflow)
     tune_params <- tune_tbl$id
 
     # when called from [tune_bayes()]
     tune_params <- tune_params[tune_params != ".iter"]
 
-    grid_params <- names(x)
+    grid_params <- names(grid)
 
     extra_grid_params <- setdiff(grid_params, tune_params)
     extra_tune_params <- setdiff(tune_params, grid_params)
@@ -80,21 +91,21 @@ check_grid <- function(x, object, pset = NULL) {
       rlang::abort(msg)
     }
   } else {
-    x <- as.integer(x[1])
-    if (x < 1) {
+    grid <- as.integer(grid[1])
+    if (grid < 1) {
       rlang::abort(grid_msg)
     }
-    check_workflow(object, pset = pset, check_dials = TRUE)
+    check_workflow(workflow, pset = pset, check_dials = TRUE)
 
-    x <- dials::grid_latin_hypercube(pset, size = x)
-    x <- dplyr::distinct(x)
+    grid <- dials::grid_latin_hypercube(pset, size = grid)
+    grid <- dplyr::distinct(grid)
   }
 
-  if (!tibble::is_tibble(x)) {
-    x <- tibble::as_tibble(x)
+  if (!tibble::is_tibble(grid)) {
+    grid <- tibble::as_tibble(grid)
   }
 
-  x
+  grid
 }
 
 needs_finalization <- function(x, nms = character(0)) {
@@ -109,15 +120,15 @@ needs_finalization <- function(x, nms = character(0)) {
   any(dials::has_unknowns(x$object))
 }
 
-check_parameters <- function(object, pset = NULL, data, grid_names = character(0)) {
+check_parameters <- function(workflow, pset = NULL, data, grid_names = character(0)) {
   if (is.null(pset)) {
-    pset <- parameters(object)
+    pset <- parameters(workflow)
   }
   unk <- purrr::map_lgl(pset$object, dials::has_unknowns)
   if (!any(unk)) {
     return(pset)
   }
-  tune_param <- tune_args(object)
+  tune_param <- tune_args(workflow)
   tune_recipe <- tune_param$id[tune_param$source == "recipe"]
   tune_recipe <- length(tune_recipe) > 0
 
@@ -141,7 +152,7 @@ check_parameters <- function(object, pset = NULL, data, grid_names = character(0
 
     tune_log(list(verbose = TRUE), split = NULL, msg, type = "info")
 
-    x <- workflows::.fit_pre(object, data)$pre$mold$predictors
+    x <- workflows::.fit_pre(workflow, data)$pre$mold$predictors
     pset$object <- purrr::map(pset$object, dials::finalize, x = x)
   }
   pset
@@ -172,11 +183,45 @@ check_installs <- function(x) {
     is_inst <- purrr::map_lgl(deps, is_installed)
     if (any(!is_inst)) {
       stop("Some package installs are required: ",
-        paste0("'", deps[!is_inst], "'", collapse = ", "),
-        call. = FALSE
+           paste0("'", deps[!is_inst], "'", collapse = ", "),
+           call. = FALSE
       )
     }
   }
+}
+
+check_bayes_initial_size <- function(num_param, num_grid, race = FALSE) {
+  chr_param <-
+    ifelse(num_param == 1,
+           "is one tuning parameter",
+           paste("are", num_param, "tuning parameters"))
+  chr_grid <-
+    ifelse(num_grid == 1,
+           "a single grid point was",
+           paste(num_grid, "grid points were"))
+  msg <- paste0("There ", chr_param, " and ", chr_grid, " requested.")
+  race_msg <-
+    ifelse(race,
+           "With racing, only completely resampled parameters are used.",
+           "")
+  if (num_grid == 1) {
+    rlang::abort(
+      paste(tune_color$symbol$warning("!"), msg,
+            "The GP model requires 2+ initial points but there should",
+            "be more initial points than there are tuning paramters.", race_msg)
+    )
+  }
+  if (num_grid < num_param + 1) {
+    msg <-
+      paste(
+        msg,
+        "This is likely to cause numerical issues in the first few",
+        "search iterations.",
+        race_msg
+      )
+    message_wrap(msg, prefix = "!", color_text = get_tune_colors()$message$warning)
+  }
+  invisible(NULL)
 }
 
 check_param_objects <- function(pset) {
@@ -201,15 +246,11 @@ check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
     rlang::abort("The `object` argument should be a 'workflow' object.")
   }
 
-  has_preprocessor <- has_preprocessor_formula(x) || has_preprocessor_recipe(x)
-
-  if (!has_preprocessor) {
-    rlang::abort("A model formula or recipe are required.")
+  if (!has_preprocessor(x)) {
+    rlang::abort("A formula, recipe, or variables preprocessor is required.")
   }
 
-  has_spec <- has_spec(x)
-
-  if (!has_spec) {
+  if (!has_spec(x)) {
     rlang::abort("A parsnip model is required.")
   }
 
@@ -295,12 +336,12 @@ bayes_msg <- "`initial` should be a positive integer or the results of [tune_gri
 #' @param wflow A `workflow` object.
 #' @param resamples An `rset` object.
 #' @param ctrl A `control_grid` object.
-check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
+check_initial <- function(x, pset, wflow, resamples, metrics, ctrl, checks = "grid") {
   if (is.null(x)) {
     rlang::abort(bayes_msg)
   }
   if (is.numeric(x)) {
-    x <- create_initial_set(pset, n = x)
+    x <- create_initial_set(pset, n = x, checks = checks)
     if (ctrl$verbose) {
       message()
       msg <- paste0(" Generating a set of ", nrow(x), " initial parameter results")
@@ -313,12 +354,12 @@ check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
       grid = x,
       metrics = metrics,
       param_info = pset,
-      control = control_grid(extract = ctrl$extract, save_pred = ctrl$save_pred)
+      control = control_grid(
+        extract = ctrl$extract,
+        save_pred = ctrl$save_pred,
+        event_level = ctrl$event_level
+      )
     )
-
-    # Strip off `tune_results` class since we add on an `iteration_results`
-    # class later.
-    x <- new_bare_tibble(x)
 
     if (ctrl$verbose) {
       tune_log(ctrl, split = NULL, "Initialization complete", type = "success")
@@ -328,17 +369,36 @@ check_initial <- function(x, pset, wflow, resamples, metrics, ctrl) {
     if (!inherits(x, "tune_results")) {
       rlang::abort(bayes_msg)
     }
-
     if (ctrl$save_pred & !any(names(x) == ".predictions")) {
       rlang::abort("`save_pred` can only be used if the initial results saved predictions.")
     }
     if (!is.null(ctrl$extract) & !any(names(x) == ".extracts")) {
       rlang::abort("`extract` can only be used if the initial results has extractions.")
     }
-
+    param_nms <- .get_tune_parameter_names(x)
+    if (inherits(x, "tune_race")) {
+      num_resamples <-
+        x %>%
+        collect_metrics(summarize = FALSE) %>%
+        dplyr::count(.config)
+      max_resamples <- max(num_resamples$n)
+      configs <- num_resamples$.config[num_resamples$n == max_resamples]
+      x <- filter_parameters(x, .config %in% configs)
+      num_grid <- length(configs)
+      x$.order <- NULL
+    } else {
+      num_grid <-
+        collect_metrics(x) %>%
+        dplyr::distinct(!!!rlang::syms(param_nms)) %>%
+        nrow()
+    }
+    if (any(checks == "bayes")) {
+      check_bayes_initial_size(length(param_nms), num_grid,
+                               race = inherits(x, "tune_race"))
+    }
   }
   if (!any(names(x) == ".iter")) {
-    x <- x %>% dplyr::mutate(.iter = 0)
+    x <- x %>% dplyr::mutate(.iter = 0L)
   }
   x
 }

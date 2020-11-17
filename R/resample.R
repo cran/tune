@@ -22,6 +22,7 @@
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
+#' library(workflows)
 #'
 #' set.seed(6735)
 #' folds <- vfold_cv(mtcars, v = 5)
@@ -40,6 +41,16 @@
 #' spline_res
 #'
 #' show_best(spline_res, metric = "rmse")
+#'
+#' # You can also wrap up a preprocessor and a model into a workflow, and
+#' # supply that to `fit_resamples()` instead. Here, a workflows "variables"
+#' # preprocessor is used, which lets you supply terms using dplyr selectors.
+#' # The variables are used as-is, no preprocessing is done to them.
+#' wf <- workflow() %>%
+#'   add_variables(outcomes = mpg, predictors = everything()) %>%
+#'   add_model(lin_mod)
+#'
+#' wf_res <- fit_resamples(wf, folds)
 #' }
 #' @export
 fit_resamples <- function(object, ...) {
@@ -53,40 +64,6 @@ fit_resamples.default <- function(object, ...) {
     "a model or workflow."
   )
   rlang::abort(msg)
-}
-
-#' @export
-fit_resamples.recipe <- function(object,
-                                 model,
-                                 resamples,
-                                 ...,
-                                 metrics = NULL,
-                                 control = control_resamples()) {
-
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "fit_resamples.recipe()",
-                            details = deprecate_msg(match.call(), "fit_resamples"))
-  empty_ellipses(...)
-
-  fit_resamples(model, preprocessor = object, resamples = resamples,
-                metrics = metrics, control = control)
-}
-
-#' @export
-fit_resamples.formula <- function(formula,
-                                  model,
-                                  resamples,
-                                  ...,
-                                  metrics = NULL,
-                                  control = control_resamples()) {
-
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "fit_resamples.formula()",
-                            details = deprecate_msg(match.call(), "fit_resamples"))
-  empty_ellipses(...)
-
-  fit_resamples(model, preprocessor = formula, resamples = resamples,
-                metrics = metrics, control = control)
 }
 
 #' @export
@@ -113,7 +90,12 @@ fit_resamples.model_spec <- function(object,
     wflow <- add_formula(wflow, preprocessor)
   }
 
-  resample_workflow(wflow, resamples, metrics, control)
+  fit_resamples(
+    wflow,
+    resamples = resamples,
+    metrics = metrics,
+    control = control
+  )
 }
 
 
@@ -127,320 +109,40 @@ fit_resamples.workflow <- function(object,
 
   empty_ellipses(...)
 
-  resample_workflow(object, resamples, metrics, control)
+  resample_workflow(
+    workflow = object,
+    resamples = resamples,
+    metrics = metrics,
+    control = control,
+    rng = TRUE
+  )
 }
 
 # ------------------------------------------------------------------------------
 
-resample_workflow <- function(workflow, resamples, metrics, control) {
-  check_rset(resamples)
-  check_workflow(workflow)
-  metrics <- check_metrics(metrics, workflow)
+resample_workflow <- function(workflow, resamples, metrics, control, rng) {
+  # `NULL` is the signal that we have no grid to tune with
+  grid <- NULL
+  pset <- NULL
 
-  has_formula <- has_preprocessor_formula(workflow)
+  out <- tune_grid_workflow(
+    workflow = workflow,
+    resamples = resamples,
+    grid = grid,
+    metrics = metrics,
+    pset = pset,
+    control = control,
+    rng = rng
+  )
 
-  # Save rset attributes, then fall back to a bare tibble
-  rset_info <- pull_rset_attributes(resamples)
-  resamples <- new_bare_tibble(resamples)
-
-  if (has_formula) {
-    resamples <- resample_with_formula(resamples, workflow, metrics, control)
-  } else {
-    resamples <- resample_with_recipe(resamples, workflow, metrics, control)
-  }
-
-  if (is_cataclysmic(resamples)) {
-    rlang::warn(
-      "All models failed in [fit_resamples()]. See the `.notes` column."
-    )
-  }
-
-  workflow_output <- set_workflow(workflow, control)
+  attributes <- attributes(out)
 
   new_resample_results(
-    x = resamples,
-    parameters = parameters(workflow),
-    metrics = metrics,
-    outcomes = outcome_names(workflow),
-    rset_info = rset_info,
-    workflow = workflow_output
+    x = out,
+    parameters = attributes$parameters,
+    metrics = attributes$metrics,
+    outcomes = attributes$outcomes,
+    rset_info = attributes$rset_info,
+    workflow = attributes$workflow
   )
-}
-
-# ------------------------------------------------------------------------------
-
-resample_with_recipe <- function(resamples, workflow, metrics, control) {
-  B <- nrow(resamples)
-
-  `%op%` <- get_operator(control$allow_par, workflow)
-
-  lab_names <- names(labels(resamples$splits[[1]]))
-
-  safely_iter_resample_with_recipe <- super_safely_iterate(iter_resample_with_recipe)
-
-  results <- foreach::foreach(rs_iter = 1:B, .packages = "tune", .errorhandling = "pass") %op% {
-    safely_iter_resample_with_recipe(
-      rs_iter = rs_iter,
-      resamples = resamples,
-      grid = NULL,
-      workflow = workflow,
-      metrics = metrics,
-      control = control
-    )
-  }
-
-  resamples <- pull_metrics(resamples, results, control)
-  resamples <- pull_notes(resamples, results, control)
-  resamples <- pull_extracts(resamples, results, control)
-  resamples <- pull_predictions(resamples, results, control)
-
-  resamples
-}
-
-iter_resample_with_recipe <- function(rs_iter, resamples, workflow, metrics, control) {
-  load_pkgs(workflow)
-  load_namespace(control$pkgs)
-
-  control_parsnip <- parsnip::control_parsnip(verbosity = 0, catch = TRUE)
-  control_workflow <- control_workflow(control_parsnip = control_parsnip)
-
-  split <- resamples$splits[[rs_iter]]
-  metric_est <- NULL
-  extracted <- NULL
-  pred_vals <- NULL
-  .notes <- NULL
-
-  workflow <- catch_and_log(
-    train_recipe(split, workflow, NULL),
-    control,
-    split,
-    "recipe",
-    notes = .notes
-  )
-
-  if (is_failure(workflow)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  workflow <- catch_and_log_fit(
-    train_model(workflow, NULL, control = control_workflow),
-    control,
-    split,
-    "model",
-    notes = .notes
-  )
-
-  # check for parsnip level and model level failure
-  if (is_failure(workflow) || is_failure(workflow$fit$fit$fit)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  # Dummy tbl with no columns but the correct number of rows to `bind_cols()`
-  # against in `append_extracts()`
-  split_label_tbl <- labels(split)
-  dummy_param_tbl <- tibble(.rows = nrow(split_label_tbl))
-
-  extracted <- append_extracts(extracted, workflow, dummy_param_tbl, split, control)
-
-  predictions <- catch_and_log(
-    predict_model_no_grid(split, workflow, metrics),
-    control,
-    split,
-    "model (predictions)",
-    bad_only = TRUE,
-    notes = .notes
-  )
-
-  if (is_failure(predictions)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  metric_est <- append_metrics(metric_est, predictions, workflow, metrics, split)
-  pred_vals <- append_predictions(pred_vals, predictions, split, control)
-
-  list(.metrics = metric_est, .extracts = extracted, .predictions = pred_vals, .notes = .notes)
-}
-
-# ------------------------------------------------------------------------------
-
-resample_with_formula <- function(resamples, workflow, metrics, control) {
-  B <- nrow(resamples)
-
-  `%op%` <- get_operator(control$allow_par, workflow)
-
-  lab_names <- names(labels(resamples$splits[[1]]))
-
-  safely_iter_resample_with_formula <- super_safely_iterate(iter_resample_with_formula)
-
-  results <- foreach::foreach(rs_iter = 1:B, .packages = "tune", .errorhandling = "pass") %op% {
-    safely_iter_resample_with_formula(
-      rs_iter = rs_iter,
-      resamples = resamples,
-      grid = NULL,
-      workflow = workflow,
-      metrics = metrics,
-      control = control
-    )
-  }
-
-  resamples <- pull_metrics(resamples, results, control)
-  resamples <- pull_notes(resamples, results, control)
-  resamples <- pull_extracts(resamples, results, control)
-  resamples <- pull_predictions(resamples, results, control)
-
-  resamples
-}
-
-iter_resample_with_formula <- function(rs_iter, resamples, workflow, metrics, control) {
-  load_pkgs(workflow)
-  load_namespace(control$pkgs)
-
-  control_parsnip <- parsnip::control_parsnip(verbosity = 0, catch = TRUE)
-  control_workflow <- control_workflow(control_parsnip = control_parsnip)
-
-  split <- resamples$splits[[rs_iter]]
-  metric_est <- NULL
-  extracted <- NULL
-  pred_vals <- NULL
-  .notes <- NULL
-
-  workflow <- catch_and_log(
-    train_formula(split, workflow),
-    control,
-    split,
-    "formula",
-    notes = .notes
-  )
-
-  if (is_failure(workflow)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  workflow <- catch_and_log_fit(
-    train_model(workflow, NULL, control = control_workflow),
-    control,
-    split,
-    "model",
-    notes = .notes
-  )
-
-  # check for parsnip level and model level failure
-  if (is_failure(workflow) || is_failure(workflow$fit$fit$fit)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  # Dummy tbl with no columns but the correct number of rows to `bind_cols()`
-  # against in `append_extracts()`
-  split_label_tbl <- labels(split)
-  dummy_param_tbl <- tibble(.rows = nrow(split_label_tbl))
-
-  extracted <- append_extracts(extracted, workflow, dummy_param_tbl, split, control)
-
-  predictions <- catch_and_log(
-    predict_model_no_grid(split, workflow, metrics),
-    control,
-    split,
-    "model (predictions)",
-    bad_only = TRUE,
-    notes = .notes
-  )
-
-  if (is_failure(predictions)) {
-    out <- list(
-      .metrics = metric_est,
-      .extracts = extracted,
-      .predictions = pred_vals,
-      .notes = .notes
-    )
-
-    return(out)
-  }
-
-  metric_est <- append_metrics(metric_est, predictions, workflow, metrics, split)
-  pred_vals <- append_predictions(pred_vals, predictions, split, control)
-
-  list(.metrics = metric_est, .extracts = extracted, .predictions = pred_vals, .notes = .notes)
-}
-
-# ------------------------------------------------------------------------------
-# `resamples()` prediction
-
-predict_model_no_grid <- function(split, workflow, metrics) {
-  model <- workflows::pull_workflow_fit(workflow)
-
-  forged <- forge_from_workflow(split, workflow)
-
-  x_vals <- forged$predictors
-  y_vals <- forged$outcomes
-
-  orig_rows <- as.integer(split, data = "assessment")
-
-  # Determine the type of prediction that is required
-  type_info <- metrics_info(metrics)
-  types <- unique(type_info$type)
-
-  res <- NULL
-
-  for (type_iter in types) {
-    tmp_res <- predict(model, x_vals, type = type_iter) %>%
-      mutate(.row = orig_rows)
-
-    if (!is.null(res)) {
-      res <- dplyr::full_join(res, tmp_res, by = ".row")
-    } else {
-      res <- tmp_res
-    }
-
-    rm(tmp_res)
-  }
-
-  # Add outcome data
-  y_vals <- dplyr::mutate(y_vals, .row = orig_rows)
-  res <- dplyr::full_join(res, y_vals, by = ".row")
-
-  tibble::as_tibble(res)
-}
-
-forge_from_workflow <- function(split, workflow) {
-  new_data <- rsample::assessment(split)
-
-  blueprint <- workflow$pre$mold$blueprint
-  forged <- hardhat::forge(new_data, blueprint, outcomes = TRUE)
-
-  forged
 }

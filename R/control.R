@@ -30,15 +30,19 @@
 #' @export
 control_grid <- function(verbose = FALSE, allow_par = TRUE,
                          extract = NULL, save_pred = FALSE,
-                         pkgs = NULL, save_workflow = FALSE) {
+                         pkgs = NULL, save_workflow = FALSE,
+                         event_level = "first",
+                         parallel_over = NULL) {
   # add options for  seeds per resample
 
   val_class_and_single(verbose, "logical", "control_grid()")
   val_class_and_single(allow_par, "logical", "control_grid()")
   val_class_and_single(save_pred, "logical", "control_grid()")
   val_class_and_single(save_workflow, "logical", "control_grid()")
+  val_class_and_single(event_level, "character", "control_grid()")
   val_class_or_null(pkgs, "character", "control_grid()")
   val_class_or_null(extract, "function", "control_grid()")
+  val_parallel_over(parallel_over, "control_grid()")
 
 
   res <- list(verbose = verbose,
@@ -46,7 +50,9 @@ control_grid <- function(verbose = FALSE, allow_par = TRUE,
               extract = extract,
               save_pred = save_pred,
               pkgs = pkgs,
-              save_workflow = save_workflow)
+              save_workflow = save_workflow,
+              event_level = event_level,
+              parallel_over = parallel_over)
 
   class(res) <- c("control_grid", "control_resamples")
   res
@@ -92,7 +98,35 @@ control_resamples <- control_grid
 #' @param pkgs An optional character string of R package names that should be
 #'   loaded (by namespace) during parallel processing.
 #' @param save_workflow A logical for whether the workflow should be appended
-#' to the output as an attribute.
+#'  to the output as an attribute.
+#' @param save_gp_scoring A logical to save the intermediate Gaussian process
+#'   models for each iteration of the search. These are saved to
+#'  `tempdir()` with names `gp_candidates_{i}.RData` where `i` is the iteration.
+#'  These results are deleted when the R session ends. This option is only
+#'  useful for teaching purposes.
+#' @param event_level A single string containing either `"first"` or `"second"`.
+#'   This argument is passed on to yardstick metric functions when any type
+#'   of class prediction is made, and specifies which level of the outcome
+#'   is considered the "event".
+#' @param parallel_over A single string containing either `"resamples"` or
+#'   `"everything"` describing how to use parallel processing. Alternatively,
+#'   `NULL` is allowed, which chooses between `"resamples"` and `"everything"`
+#'   automatically.
+#'
+#'   If `"resamples"`, then tuning will be performed in parallel over resamples
+#'   alone. Within each resample, the preprocessor (i.e. recipe or formula) is
+#'   processed once, and is then reused across all models that need to be fit.
+#'
+#'   If `"everything"`, then tuning will be performed in parallel at two levels.
+#'   An outer parallel loop will iterate over resamples. Additionally, an
+#'   inner parallel loop will iterate over all unique combinations of
+#'   preprocessor and model tuning parameters for that specific resample. This
+#'   will result in the preprocessor being re-processed multiple times, but
+#'   can be faster if that processing is extremely fast.
+#'
+#'   If `NULL`, chooses `"resamples"` if there are more than one resample,
+#'   otherwise chooses `"everything"` to attempt to maximize core utilization.
+#'
 #' @details
 #'
 #' For `extract`, this function can be used to output the model object, the
@@ -123,11 +157,15 @@ control_bayes <-
            save_pred = FALSE,
            time_limit = NA,
            pkgs = NULL,
-           save_workflow = FALSE) {
+           save_workflow = FALSE,
+           save_gp_scoring = FALSE,
+           event_level = "first",
+           parallel_over = NULL) {
     # add options for seeds per resample
 
     val_class_and_single(verbose, "logical", "control_bayes()")
     val_class_and_single(save_pred, "logical", "control_bayes()")
+    val_class_and_single(save_gp_scoring, "logical", "control_bayes()")
     val_class_and_single(save_workflow, "logical", "control_bayes()")
     val_class_and_single(no_improve, c("numeric", "integer"), "control_bayes()")
     val_class_and_single(uncertain, c("numeric", "integer"), "control_bayes()")
@@ -135,6 +173,8 @@ control_bayes <-
     val_class_or_null(extract, "function", "control_bayes()")
     val_class_and_single(time_limit, c("logical", "numeric"), "control_bayes()")
     val_class_or_null(pkgs, "character", "control_bayes()")
+    val_class_and_single(event_level, "character", "control_bayes()")
+    val_parallel_over(parallel_over, "control_bayes()")
 
     if (!is.infinite(uncertain) && uncertain > no_improve) {
       cli::cli_alert_warning(
@@ -152,7 +192,10 @@ control_bayes <-
         save_pred = save_pred,
         time_limit = time_limit,
         pkgs = pkgs,
-        save_workflow = save_workflow
+        save_workflow = save_workflow,
+        save_gp_scoring = save_gp_scoring,
+        event_level = event_level,
+        parallel_over = parallel_over
       )
 
     class(res) <- "control_bayes"
@@ -162,4 +205,17 @@ control_bayes <-
 print.control_bayes <- function(x, ...) {
   cat("bayes control object\n")
   invisible(x)
+}
+
+# ------------------------------------------------------------------------------
+
+val_parallel_over <- function(parallel_over, where) {
+  if (is.null(parallel_over)) {
+    return(invisible(NULL))
+  }
+
+  val_class_and_single(parallel_over, "character", where)
+  rlang::arg_match0(parallel_over, c("resamples", "everything"), "parallel_over")
+
+  invisible(NULL)
 }

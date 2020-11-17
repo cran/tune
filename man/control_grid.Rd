@@ -11,7 +11,9 @@ control_grid(
   extract = NULL,
   save_pred = FALSE,
   pkgs = NULL,
-  save_workflow = FALSE
+  save_workflow = FALSE,
+  event_level = "first",
+  parallel_over = NULL
 )
 
 control_resamples(
@@ -20,7 +22,9 @@ control_resamples(
   extract = NULL,
   save_pred = FALSE,
   pkgs = NULL,
-  save_workflow = FALSE
+  save_workflow = FALSE,
+  event_level = "first",
+  parallel_over = NULL
 )
 }
 \arguments{
@@ -45,6 +49,30 @@ loaded (by namespace) during parallel processing.}
 
 \item{save_workflow}{A logical for whether the workflow should be appended
 to the output as an attribute.}
+
+\item{event_level}{A single string containing either \code{"first"} or \code{"second"}.
+This argument is passed on to yardstick metric functions when any type
+of class prediction is made, and specifies which level of the outcome
+is considered the "event".}
+
+\item{parallel_over}{A single string containing either \code{"resamples"} or
+\code{"everything"} describing how to use parallel processing. Alternatively,
+\code{NULL} is allowed, which chooses between \code{"resamples"} and \code{"everything"}
+automatically.
+
+If \code{"resamples"}, then tuning will be performed in parallel over resamples
+alone. Within each resample, the preprocessor (i.e. recipe or formula) is
+processed once, and is then reused across all models that need to be fit.
+
+If \code{"everything"}, then tuning will be performed in parallel at two levels.
+An outer parallel loop will iterate over resamples. Additionally, an
+inner parallel loop will iterate over all unique combinations of
+preprocessor and model tuning parameters for that specific resample. This
+will result in the preprocessor being re-processed multiple times, but
+can be faster if that processing is extremely fast.
+
+If \code{NULL}, chooses \code{"resamples"} if there are more than one resample,
+otherwise chooses \code{"everything"} to attempt to maximize core utilization.}
 }
 \description{
 Control aspects of the grid search process

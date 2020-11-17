@@ -63,33 +63,11 @@ last_fit <- function(object, ...) {
 
 #' @export
 last_fit.default <- function(object, ...) {
-  empty_ellipses(...)
   msg <- paste0(
     "The first argument to [last_fit()] should be either ",
     "a model or workflow."
   )
   rlang::abort(msg)
-}
-
-#' @export
-last_fit.recipe <- function(object, model, split, ..., metrics = NULL) {
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "last_fit.recipe()",
-                            details = deprecate_msg(match.call(), "last_fit"))
-  empty_ellipses(...)
-
-  last_fit(model, preprocessor = object, split = split, metrics = metrics)
-
-}
-
-#' @export
-last_fit.formula <- function(formula, model, split, ..., metrics = NULL) {
-  lifecycle::deprecate_soft("0.1.0",
-                            what = "last_fit.formula()",
-                            details = deprecate_msg(match.call(), "last_fit"))
-  empty_ellipses(...)
-
-  last_fit(model, preprocessor = formula, split = split, metrics = metrics)
 }
 
 #' @export
@@ -122,29 +100,28 @@ last_fit.workflow <- function(object, split, ..., metrics = NULL) {
   last_fit_workflow(object, split, metrics)
 }
 
-split_to_rset <- function(x) {
-  prop <- length(x$in_id)/nrow(x$data)
-  res <- rsample::mc_cv(x$data, times = 1, prop = prop)
-  res$splits[[1]] <- x
-  res
-}
-
 last_fit_workflow <- function(object, split, metrics) {
   extr <- function(x)
     x
-  ctrl <- control_resamples(save_pred = TRUE, extract = extr)
-  res <-
-    fit_resamples(
-      object,
-      resamples = split_to_rset(split),
-      metrics = metrics,
-      control = ctrl
-    )
-  res$id[[1]] <- "train/test split"
+  control <- control_resamples(save_pred = TRUE, extract = extr)
+  splits <- list(split)
+  resamples <- rsample::manual_rset(splits, ids = "train/test split")
+
+  # Turn off seed generation to ensure `last_fit()` and workflows `fit()`
+  # are reproducible
+  rng <- FALSE
+
+  res <- resample_workflow(
+    workflow = object,
+    resamples = resamples,
+    metrics = metrics,
+    control = control,
+    rng = rng
+  )
+
   res$.workflow <- res$.extracts[[1]][[1]]
   res$.extracts <- NULL
   class(res) <- c("last_fit", class(res))
   class(res) <- unique(class(res))
   res
 }
-

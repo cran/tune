@@ -90,6 +90,37 @@ pull_predictions <- function(resamples, res, control) {
   resamples
 }
 
+pull_all_outcome_names <- function(resamples, res) {
+  all_outcome_names <- purrr::map(res, ~ .x[[".all_outcome_names"]])
+  resamples$.all_outcome_names <- all_outcome_names
+  resamples
+}
+
+reduce_all_outcome_names <- function(resamples) {
+  all_outcome_names <- resamples$.all_outcome_names
+  all_outcome_names <- rlang::flatten(all_outcome_names)
+  all_outcome_names <- vctrs::vec_unique(all_outcome_names)
+
+  n_unique <- length(all_outcome_names)
+
+  # All models failed
+  if (n_unique == 0L) {
+    return(character())
+  }
+
+  if (n_unique > 1L) {
+    rlang::warn(paste0(
+      "More than one set of outcomes were used when tuning. ",
+      "This should never happen. ",
+      "Review how the outcome is specified in your model."
+    ))
+  }
+
+  outcome_names <- all_outcome_names[[1L]]
+
+  outcome_names
+}
+
 ensure_tibble <- function(x) {
   if (is.null(x)) {
     res <- tibble(.notes = character(0))
@@ -108,15 +139,32 @@ pull_notes <- function(resamples, res, control) {
 
 # ------------------------------------------------------------------------------
 
-append_metrics <- function(collection, predictions, workflow, metrics, split, .config = NULL) {
+append_metrics <- function(collection,
+                           predictions,
+                           metrics,
+                           param_names,
+                           outcome_name,
+                           event_level,
+                           split,
+                           .config = NULL) {
   if (inherits(predictions, "try-error")) {
     return(collection)
   }
-  tmp_est <- estimate_metrics(predictions, metrics, workflow)
+
+  tmp_est <- estimate_metrics(
+    dat = predictions,
+    metric = metrics,
+    param_names = param_names,
+    outcome_name = outcome_name,
+    event_level = event_level
+  )
+
   tmp_est <- cbind(tmp_est, labels(split))
+
   if (!rlang::is_null(.config)) {
     tmp_est <- cbind(tmp_est, .config)
   }
+
   dplyr::bind_rows(collection, tmp_est)
 }
 
@@ -127,20 +175,26 @@ append_predictions <- function(collection, predictions, split, control, .config 
   if (inherits(predictions, "try-error")) {
     return(collection)
   }
-  predictions <- cbind(predictions, labels(split))
+
+  predictions <- vec_cbind(predictions, labels(split))
+
   if (!rlang::is_null(.config)) {
-    predictions <- cbind(predictions, .config)
+    by <- setdiff(names(.config), ".config")
+
+    if (length(by) == 0L) {
+      # Nothing to tune, just bind on config
+      predictions <- vec_cbind(predictions, .config)
+    } else{
+      predictions <- dplyr::inner_join(predictions, .config, by = by)
+    }
   }
+
   dplyr::bind_rows(collection, predictions)
 }
 
-append_extracts <- function(collection, workflow, param, split, ctrl, .config = NULL) {
-  if (any(names(param) == ".submodels")) {
-    param <- param %>% dplyr::select(-.submodels)
-  }
-
+append_extracts <- function(collection, workflow, grid, split, ctrl, .config = NULL) {
   extracts <-
-    param %>%
+    grid %>%
     dplyr::bind_cols(labels(split)) %>%
     mutate(
       .extracts = list(
@@ -153,6 +207,16 @@ append_extracts <- function(collection, workflow, param, split, ctrl, .config = 
   }
 
   dplyr::bind_rows(collection, extracts)
+}
+
+append_outcome_names <- function(all_outcome_names, outcome_names) {
+  c(all_outcome_names, list(outcome_names))
+}
+
+extract_metrics_config <- function(param_names, metrics) {
+  metrics_config_names <- c(param_names, ".config")
+  out <- metrics[metrics_config_names]
+  vec_unique(out)
 }
 
 #' Convenience functions to extract model or recipe

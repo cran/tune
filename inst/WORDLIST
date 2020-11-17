@@ -1,6 +1,7 @@
 Ames
 Breiman
 cdot
+CMD
 Codecov
 curation
 edu
@@ -24,6 +25,7 @@ parallelizes
 param
 plaintext
 pre
+preprocessor
 reprex
 RBF
 stanford

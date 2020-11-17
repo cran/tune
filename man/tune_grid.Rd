@@ -77,7 +77,7 @@ parameters are equal).
 and/or post-processing parameters, the minimum number of fits are
 used. For example, if the number of PCA components in a recipe step
 are being tuned over three values (along with model tuning
-parameters), only three recipes are are trained. The alternative
+parameters), only three recipes are trained. The alternative
 would be to re-train the same recipe multiple times for each model
 tuning parameter.
 }
@@ -100,7 +100,7 @@ combinations.
 When provided, the grid should have column names for each parameter and
 these should be named by the parameter name or \code{id}. For example, if a
 parameter is marked for optimization using \code{penalty = tune()}, there should
-be a column names \code{tune}. If the optional identifier is used, such as
+be a column named \code{penalty}. If the optional identifier is used, such as
 \code{penalty = tune(id = 'lambda')}, then the corresponding column name should
 be \code{lambda}.
 
@@ -205,6 +205,7 @@ grid has a separate R object associated with it.
 library(recipes)
 library(rsample)
 library(parsnip)
+library(workflows)
 library(ggplot2)
 
 # ---------------------------------------------------------------------------
@@ -259,6 +260,21 @@ show_best(svm_res, metric = "rmse")
 
 autoplot(svm_res, metric = "rmse") +
   scale_x_log10()
+
+# ---------------------------------------------------------------------------
+
+# Using a variables preprocessor with a workflow
+
+# Rather than supplying a preprocessor (like a recipe) and a model directly
+# to `tune_grid()`, you can also wrap them up in a workflow and pass
+# that along instead (note that this doesn't do any preprocessing to
+# the variables, it passes them along as-is).
+wf <- workflow() \%>\%
+  add_variables(outcomes = mpg, predictors = everything()) \%>\%
+  add_model(svm_mod)
+
+set.seed(3254)
+svm_res_wf <- tune_grid(wf, resamples = folds, grid = 7)
 }
 }
 \seealso{
