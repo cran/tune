@@ -1,5 +1,16 @@
-# tune (development version)
+# tune 0.1.3
 
+* The `rsample::pretty()` methods were extended to `tune_results` objects.  
+
+* Added `pillar` methods for formatting `tune` objects in list columns. 
+
+* A method for `.get_fingerprint()` was added. This helps determine if `tune` objects used the same resamples. 
+
+# tune 0.1.2
+
+ * `collect_predictions()` was made generic. 
+ 
+ * The default tuning parameter for the SVM polynomial degree was switched from `dials::degree()` to `dials::prod_degree()` since it must be an integer. 
 ## Bug Fixes
 
 * `last_fit()` and `workflows::fit()` will now give identical results for the same workflow when the underlying model uses random number generation (#300).

@@ -133,3 +133,23 @@ new_bare_tibble <- function(x, ..., class = character()) {
   }
   res
 }
+
+#' @export
+#' @rdname tune_accessor
+.get_fingerprint.tune_results <- function(x, ...) {
+  att <- attributes(x)$rset_info$att
+  if (any(names(att) == "fingerprint")) {
+    res <- att$fingerprint
+  } else {
+    res <- NA_character_
+  }
+  res
+}
+
+# Get a textual summary of the type of resampling
+#' @export
+pretty.tune_results <- function(x, ...) {
+  attr(x, "rset_info")$label
+}
+
+
