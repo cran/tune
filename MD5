@@ -1,7 +1,7 @@
-dd268bb3fc5bec7f068771221ba4214a *DESCRIPTION
+809f273c77d06ef0f53676bb748105e2 *DESCRIPTION
 5174dfc514f0941d2edd4b0b4c9941dd *LICENSE
 0496d8252f053bcf0a138334f0da2b74 *NAMESPACE
-9a7f7c212dc8e14b911e10f68f3cd189 *NEWS.md
+364d440a5faa0307540b03007eaf2cea *NEWS.md
 81a3ecc49184cb12e4e07daff818148d *R/0_imports.R
 c508e85958ca351c3cc1d27cb29b9a8f *R/acquisition.R
 5cf2b2de9402a2bb7f53598ac18e2426 *R/augment.R
@@ -11,7 +11,7 @@ fdad2afb84d72f2e9bc5c7c85df6ecf8 *R/checks.R
 e2251bea14eb35a183511fb78d31f8ac *R/compat-dplyr.R
 d8ae10cd8ada27a1fd70ad29f814f384 *R/compat-vctrs-helpers.R
 6a557b83dde3c498338838f7d2bffa0e *R/compat-vctrs.R
-0fbcc57c394e8a3fffc7f5f1cbfe6984 *R/conf_mat_resampled.R
+ed1a9714b66fba334767b76ef5473517 *R/conf_mat_resampled.R
 e5f9c301b6d090e252b3211a24bf504a *R/control.R
 c186671b87cac710d4535a3d6b60e04e *R/coord_obs_pred.R
 200c2a21d5e800a7120ddd28a053829e *R/data.R
@@ -113,7 +113,7 @@ af6308904f94a4ccdbbd408ae7a2890e *tests/testthat/test-checks.R
 08bed903e62bf696eb3743a36df91137 *tests/testthat/test-compat-dplyr.R
 635201dcd9f2ebbc9fe85b9dcd13e5be *tests/testthat/test-compat-vctrs-helpers.R
 d490cb5191d152abe7ad12aa8ad3a84a *tests/testthat/test-compat-vctrs.R
-93fc46ffacdf8ffe0b694a765af51771 *tests/testthat/test-conf-mat-resampled.R
+e3ac0d1e812aa54bef7c02cb1689c4e0 *tests/testthat/test-conf-mat-resampled.R
 6c264dc858b7513fdd286e5a83861dda *tests/testthat/test-engine-parameters.R
 75cf15ee1df270b8a382be46cd9309cb *tests/testthat/test-estimate.R
 afa7dd771edc7f327758528a973d1359 *tests/testthat/test-event-level.R
