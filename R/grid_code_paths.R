@@ -17,6 +17,8 @@ tune_grid_loop <- function(resamples, grid, workflow, metrics, control, rng) {
   parallel_over <- control$parallel_over
   parallel_over <- parallel_over_finalize(parallel_over, n_resamples)
 
+  rlang::local_options(doFuture.rng.onMisuse = "ignore")
+
   if (identical(parallel_over, "resamples")) {
     seeds <- generate_seeds(rng, n_resamples)
 
@@ -123,7 +125,11 @@ tune_grid_loop_iter <- function(iteration,
 
   # After package loading to avoid potential package RNG manipulation
   if (!is.null(seed)) {
+    # `assign()`-ing the random seed alters the `kind` type to L'Ecuyer-CMRG,
+    # so we have to ensure it is restored on exit
+    old_kind <- RNGkind()[[1]]
     assign(".Random.seed", seed, envir = globalenv())
+    on.exit(RNGkind(kind = old_kind), add = TRUE)
   }
 
   control_parsnip <- parsnip::control_parsnip(verbosity = 0, catch = TRUE)
