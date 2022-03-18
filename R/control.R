@@ -45,14 +45,16 @@ control_grid <- function(verbose = FALSE, allow_par = TRUE,
   val_parallel_over(parallel_over, "control_grid()")
 
 
-  res <- list(verbose = verbose,
-              allow_par = allow_par,
-              extract = extract,
-              save_pred = save_pred,
-              pkgs = pkgs,
-              save_workflow = save_workflow,
-              event_level = event_level,
-              parallel_over = parallel_over)
+  res <- list(
+    verbose = verbose,
+    allow_par = allow_par,
+    extract = extract,
+    save_pred = save_pred,
+    pkgs = pkgs,
+    save_workflow = save_workflow,
+    event_level = event_level,
+    parallel_over = parallel_over
+  )
 
   class(res) <- c("control_grid", "control_resamples")
   res
@@ -72,10 +74,11 @@ control_resamples <- control_grid
 
 #' Control aspects of the Bayesian search process
 #'
-#' @param verbose A logical for logging results as they are generated. Despite
-#'   this argument, warnings and errors are always shown. If using a dark IDE
-#'   theme, some logging messages might be hard to see. If this is the case,
-#'   try setting the `tidymodels.dark` option with
+#' @param verbose A logical for logging results (other than warnings and errors,
+#'   which are always shown) as they are generated during training in a single
+#'   R process. When using most parallel backends, this argument typically will
+#'   not result in any logging. If using a dark IDE theme, some logging messages
+#'   might be hard to see; try setting the `tidymodels.dark` option with
 #'   `options(tidymodels.dark = TRUE)` to print lighter colors.
 #' @param no_improve The integer cutoff for the number of iterations without
 #'   better results.

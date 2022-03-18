@@ -11,9 +11,17 @@ ggplot2::autoplot
 #' @export
 generics::required_pkgs
 
+#' @importFrom hardhat tune
+#' @export
+hardhat::tune
+
 #' @importFrom generics tunable
 #' @export
 generics::tunable
+
+#' @importFrom generics tune_args
+#' @export
+generics::tune_args
 
 #' @importFrom generics min_grid
 #' @export
@@ -54,3 +62,7 @@ hardhat::extract_preprocessor
 #' @importFrom hardhat extract_workflow
 #' @export
 hardhat::extract_workflow
+#'
+#' @importFrom hardhat extract_parameter_set_dials
+#' @export
+hardhat::extract_parameter_set_dials

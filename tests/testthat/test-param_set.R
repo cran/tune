@@ -1,72 +1,46 @@
-context("parameter sets from complex objects")
+check_param_set_tibble <- function(x) {
+  expect_equal(names(x), c("name", "id", "source", "component", "component_id", "object"))
+  expect_equal(class(x$name), "character")
+  expect_equal(class(x$id), "character")
+  expect_equal(class(x$source), "character")
+  expect_equal(class(x$component), "character")
+  expect_equal(class(x$component_id), "character")
+  expect_true(!any(duplicated(x$id)))
+
+  expect_equal(class(x$object), "list")
+  obj_check <- purrr::map_lgl(x$object, ~ inherits(.x, "param") | all(is.na(.x)))
+  expect_true(all(obj_check))
+
+  invisible(TRUE)
+}
 
 # ------------------------------------------------------------------------------
 
-source(test_path("../helper-objects.R"))
+test_that("parameters.recipe() still works after deprecation", {
+  withr::local_options(lifecycle_verbosity = "quiet")
 
-# ------------------------------------------------------------------------------
+  data("Chicago", package = "modeldata")
+  spline_rec <-
+    recipes::recipe(ridership ~ ., data = head(Chicago)) %>%
+    recipes::step_impute_knn(recipes::all_predictors(), neighbors = tune("imputation")) %>%
+    recipes::step_other(recipes::all_nominal(), threshold = tune()) %>%
+    recipes::step_bs(recipes::all_predictors(), deg_free = tune(), degree = tune())
 
-test_that('recipe with no steps', {
-  bare_info <- dials::parameters(bare_rec)
-  check_param_set_tibble(bare_info)
-  expect_equal(nrow(bare_info), 0)
-})
-
-test_that('recipe with no tunable parameters', {
-  rm_info <- dials::parameters(rm_rec)
-  check_param_set_tibble(rm_info)
-  expect_equal(nrow(rm_info), 0)
-})
-
-test_that('recipe with tunable parameters', {
   spline_info <- dials::parameters(spline_rec)
   check_param_set_tibble(spline_info)
-  if (utils::packageVersion("recipes") <= "0.1.15") {
-    expected_cols <- c('step_knnimpute', 'step_other', 'step_bs', 'step_bs')
-  } else {
-    expected_cols <- c('step_impute_knn', 'step_other', 'step_bs', 'step_bs')
-  }
-  expect_equal(
-    spline_info$component,
-    expected_cols,
-  )
-  expect_true(all(spline_info$source == "recipe"))
-  nms <- c('neighbors', 'threshold', 'deg_free', 'degree')
-  expect_equal(spline_info$name, nms)
-  ids <- c('imputation', 'threshold', 'deg_free', 'degree')
-  expect_equal(spline_info$id, ids)
-
-  expect_equal(spline_info$object[[1]], dials::neighbors(c(1, 10)))
-  expect_equal(spline_info$object[[2]], dials::threshold(c(0, 1/10)))
-  expect_equal(spline_info$object[[3]], dials::spline_degree(c(1, 15)))
-  expect_equal(spline_info$object[[4]], dials::degree_int(c(1, 2)))
-
 })
 
 # ------------------------------------------------------------------------------
 
-test_that('model with no parameters', {
-  skip_if_not_installed("parsnip")
-  lm_info <- dials::parameters(lm_model)
-  check_param_set_tibble(lm_info)
-  expect_equal(nrow(lm_info), 0)
-})
+test_that("parameters.model_spec() still works after deprecation", {
+  withr::local_options(lifecycle_verbosity = "quiet")
 
-test_that('model with main and engine parameters', {
   skip_if_not_installed("parsnip")
+
+  bst_model <-
+    parsnip::boost_tree(mode = "classification", trees = tune("funky name \n")) %>%
+    parsnip::set_engine("C5.0", rules = tune(), noGlobalPruning = TRUE)
+
   c5_info <- dials::parameters(bst_model)
   check_param_set_tibble(c5_info)
-  expect_equal(nrow(c5_info), 2)
-  expect_true(all(c5_info$source == "model_spec"))
-  expect_true(all(c5_info$component == "boost_tree"))
-  expect_equal(c5_info$component_id, c("main", "engine"))
-  nms <- c("trees", "rules")
-  expect_equal(c5_info$name, nms)
-  ids <- c("funky name \n", "rules")
-  expect_equal(c5_info$id, ids)
-
-  expect_equal(c5_info$object[[1]], dials::trees(c(1, 100)))
-  expect_equal(c5_info$object[[2]], NA)
 })
-
-

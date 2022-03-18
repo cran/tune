@@ -7,6 +7,8 @@
 \alias{collect_metrics}
 \alias{collect_metrics.tune_results}
 \alias{collect_metrics.tune_race}
+\alias{collect_notes}
+\alias{collect_notes.tune_results}
 \title{Obtain and format results produced by tuning functions}
 \usage{
 collect_predictions(x, ...)
@@ -20,6 +22,10 @@ collect_metrics(x, ...)
 \method{collect_metrics}{tune_results}(x, summarize = TRUE, ...)
 
 \method{collect_metrics}{tune_race}(x, summarize = TRUE, ...)
+
+collect_notes(x, ...)
+
+\method{collect_notes}{tune_results}(x, ...)
 }
 \arguments{
 \item{x}{The results of \code{\link[=tune_grid]{tune_grid()}}, \code{\link[=tune_bayes]{tune_bayes()}}, \code{\link[=fit_resamples]{fit_resamples()}},
@@ -68,6 +74,10 @@ add to one. If hard class predictions also exist in the data, then these are
 determined from the summarized probability estimates (so that they match).
 If only hard class predictions are in the results, then the mode is used to
 summarize.
+
+\code{\link[=collect_notes]{collect_notes()}} returns a tibble with columns for the resampling
+indicators, the location (preprocessor, model, etc.), type (error or warning),
+and the notes.
 }
 \description{
 Obtain and format results produced by tuning functions
@@ -76,7 +86,7 @@ Obtain and format results produced by tuning functions
 \donttest{
 data("example_ames_knn")
 # The parameters for the model:
-parameters(ames_wflow)
+extract_parameter_set_dials(ames_wflow)
 
 # Summarized over resamples
 collect_metrics(ames_grid_search)
@@ -93,7 +103,7 @@ library(dplyr)
 library(recipes)
 library(tibble)
 
-lm_mod <-linear_reg() \%>\% set_engine("lm")
+lm_mod <- linear_reg() \%>\% set_engine("lm")
 set.seed(93599150)
 car_folds <- vfold_cv(mtcars, v = 2, repeats = 3)
 ctrl <- control_resamples(save_pred = TRUE)
@@ -105,11 +115,11 @@ spline_rec <-
 grid <- tibble(df = 3:6)
 
 resampled <-
-lm_mod \%>\%
-tune_grid(spline_rec, resamples = car_folds, control = ctrl, grid = grid)
+  lm_mod \%>\%
+  tune_grid(spline_rec, resamples = car_folds, control = ctrl, grid = grid)
 
 collect_predictions(resampled) \%>\% arrange(.row)
 collect_predictions(resampled, summarize = TRUE) \%>\% arrange(.row)
-collect_predictions(resampled, summarize = TRUE, grid[1,]) \%>\% arrange(.row)
+collect_predictions(resampled, summarize = TRUE, grid[1, ]) \%>\% arrange(.row)
 }
 }

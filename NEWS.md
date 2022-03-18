@@ -1,3 +1,20 @@
+# tune 0.2.0
+
+* The `.notes` column now contains information on the type of note (error or warning), the location where it occurred, and the note. Printing a tune result has different output describing the notes. 
+
+* `collect_notes()` can be used to gather any notes to a tibble. (#363)
+
+* Parallel processing with PSOCK clusters is now more efficient, due to carefully avoiding sending extraneous information to each worker (#384, #396).
+
+* The engine arguments for xgboost `alpha`, `lambda`, and `scale_pos_weight` are now tunable.
+
+* When the Bayesian optimization data contain missing values, these are removed before fitting the GP model. If all metrics are missing, no GP is fit and the current results are returned. (#432)
+
+* Moved `tune()` from tune to hardhat (#442).
+
+* The `parameters()` methods for `recipe`, `model_spec`, and `workflow` objects have been soft-deprecated in favor of `extract_parameter_set_dials()` methods (#428).
+
+
 # tune 0.1.6
 
 * When using `load_pkgs()`, packages that use random numbers on start-up do not affect the state of the RNG. We also added more control of the RNGkind to make it consistent with the user's previous value (#389). 
