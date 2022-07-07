@@ -26,7 +26,27 @@ metrics_info <- function(x) {
   res
 }
 
-estimate_metrics <- function(dat, metric, param_names, outcome_name, event_level) {
+#' Internal functions used by other tidymodels packages
+#'
+#' These are not to be meant to be invoked directly by users.
+#' @param dat A data set.
+#' @param metric A metric set.
+#' @param param_names A character vector of tuning parameter names.
+#' @param outcome_name A character string for the column of `dat` that is the
+#' outcome.
+#' @param event_level A logical passed from the control function.
+#' @param x A character vector of package names.
+#' @param .expr Code to execute.
+#' @param ... Object to pass to the internal `tune_log()` function.
+#' @param bad_only A logical for whether warnings and errors should be caught.
+#' @param notes Character data to add to the logging.
+#' @param workflow A workflow.
+#' @param grid_preprocessor A tibble with parameter information.
+#' @param new_data A data frame or matrix of predictors to process.
+#' @keywords internal
+#' @name tune-internal-functions
+#' @export
+.estimate_metrics <- function(dat, metric, param_names, outcome_name, event_level) {
   if (inherits(dat, "try-error")) {
     return(NULL)
   }
@@ -38,26 +58,33 @@ estimate_metrics <- function(dat, metric, param_names, outcome_name, event_level
   if (length(outcome_name) > 1L) {
     rlang::abort(paste0(
       "Internal error: Multiple outcomes are not ",
-      "supported in `estimate_metrics()`."
+      "supported in `.estimate_metrics()`."
     ))
   }
 
+  if (case_weights_column_name() %in% names(dat)) {
+    case_weights <- sym(case_weights_column_name())
+  } else {
+    case_weights <- NULL
+  }
+
   if (all(types == "numeric")) {
-    estimate_reg(dat, metric, param_names, outcome_name)
+    estimate_reg(dat, metric, param_names, outcome_name, case_weights)
   } else if (all(types == "class" | types == "prob")) {
-    estimate_class_prob(dat, metric, param_names, outcome_name, types, event_level)
+    estimate_class_prob(dat, metric, param_names, outcome_name, case_weights, types, event_level)
   } else {
     rlang::abort("Metric type not yet supported by tune.")
   }
 }
 
-estimate_reg <- function(dat, metric, param_names, outcome_name) {
+estimate_reg <- function(dat, metric, param_names, outcome_name, case_weights) {
   dat %>%
     dplyr::group_by(!!!rlang::syms(param_names)) %>%
-    metric(estimate = .pred, truth = !!sym(outcome_name))
+    metric(estimate = .pred, truth = !!sym(outcome_name), case_weights = !!case_weights)
 }
 
-estimate_class_prob <- function(dat, metric, param_names, outcome_name, types, event_level) {
+estimate_class_prob <- function(dat, metric, param_names, outcome_name,
+                                case_weights, types, event_level) {
   truth <- sym(outcome_name)
 
   estimate <- NULL
@@ -89,6 +116,7 @@ estimate_class_prob <- function(dat, metric, param_names, outcome_name, types, e
       truth = !!truth,
       estimate = !!estimate,
       !!!probs,
+      case_weights = !!case_weights,
       event_level = event_level
     )
 }

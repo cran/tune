@@ -1,5 +1,5 @@
 #' @importFrom dplyr filter select %>% full_join mutate bind_rows case_when vars
-#' @importFrom dplyr one_of ungroup slice bind_cols pull sample_n desc anti_join
+#' @importFrom dplyr all_of ungroup slice bind_cols pull sample_n desc anti_join
 #' @importFrom dplyr distinct arrange rename mutate_if starts_with inner_join
 #' @importFrom dplyr last
 #' @importFrom purrr map_int
@@ -51,6 +51,13 @@ utils::globalVariables(
 tidyr_new_interface <- function() {
   utils::packageVersion("tidyr") > "0.8.99"
 }
+
+release_bullets <- function() {
+  c(
+    "Update dependencies with `devtools::install_dev_deps()` and update the test objects via `R CMD BATCH --vanilla inst/test_objects.R`."
+  )
+}
+
 
 # ------------------------------------------------------------------------------
 ## function is called in .onLoad() in zzz.R
