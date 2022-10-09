@@ -1,8 +1,6 @@
 #' Control aspects of the grid search process
 #'
 #' @inheritParams control_bayes
-#' @param allow_par A logical to allow parallel processing (if a parallel
-#'   backend is registered).
 #'
 #' @details
 #'
@@ -32,7 +30,12 @@ control_grid <- function(verbose = FALSE, allow_par = TRUE,
                          extract = NULL, save_pred = FALSE,
                          pkgs = NULL, save_workflow = FALSE,
                          event_level = "first",
-                         parallel_over = NULL) {
+                         parallel_over = NULL,
+                         backend_options = NULL) {
+
+  # Any added arguments should also be added in superset control functions
+  # in other packages
+
   # add options for  seeds per resample
 
   val_class_and_single(verbose, "logical", "control_grid()")
@@ -53,7 +56,8 @@ control_grid <- function(verbose = FALSE, allow_par = TRUE,
     pkgs = pkgs,
     save_workflow = save_workflow,
     event_level = event_level,
-    parallel_over = parallel_over
+    parallel_over = parallel_over,
+    backend_options = backend_options
   )
 
   class(res) <- c("control_grid", "control_resamples")
@@ -82,12 +86,17 @@ control_resamples <- control_grid
 #' @export
 control_last_fit <- function(
     verbose = FALSE,
-    event_level = "first"
+    event_level = "first",
+    allow_par = FALSE
 ) {
+  # Any added arguments should also be added in superset control functions
+  # in other packages
+
   extr <- function(x) x
   control <-
     control_resamples(
       verbose = verbose,
+      allow_par = allow_par,
       event_level = event_level,
       extract = extr,
       save_pred = TRUE,
@@ -113,6 +122,10 @@ print.control_last_fit <- function(x, ...) {
 #'   not result in any logging. If using a dark IDE theme, some logging messages
 #'   might be hard to see; try setting the `tidymodels.dark` option with
 #'   `options(tidymodels.dark = TRUE)` to print lighter colors.
+#' @param verbose_iter A logical for logging results of the Bayesian search
+#'   process. Defaults to FALSE. If using a dark IDE theme, some logging
+#'   messages might be hard to see; try setting the `tidymodels.dark` option
+#'   with `options(tidymodels.dark = TRUE)` to print lighter colors.
 #' @param no_improve The integer cutoff for the number of iterations without
 #'   better results.
 #' @param uncertain The number of iterations with no improvement before an
@@ -167,6 +180,11 @@ print.control_last_fit <- function(x, ...) {
 #'   to use the same random number generation schemes. However, re-tuning a
 #'   model using the same `parallel_over` strategy is guaranteed to be
 #'   reproducible between runs.
+#' @param backend_options An object of class `"tune_backend_options"` as created
+#'   by `tune::new_backend_options()`, used to pass arguments to specific tuning
+#'   backend. Defaults to `NULL` for default backend options.
+#' @param allow_par A logical to allow parallel processing (if a parallel
+#'   backend is registered).
 #'
 #' @details
 #'
@@ -191,6 +209,7 @@ print.control_last_fit <- function(x, ...) {
 #' @export
 control_bayes <-
   function(verbose = FALSE,
+           verbose_iter = FALSE,
            no_improve = 10L,
            uncertain = Inf,
            seed = sample.int(10^5, 1),
@@ -201,10 +220,16 @@ control_bayes <-
            save_workflow = FALSE,
            save_gp_scoring = FALSE,
            event_level = "first",
-           parallel_over = NULL) {
+           parallel_over = NULL,
+           backend_options = NULL,
+           allow_par = TRUE) {
+    # Any added arguments should also be added in superset control functions
+    # in other packages
+
     # add options for seeds per resample
 
     val_class_and_single(verbose, "logical", "control_bayes()")
+    val_class_and_single(verbose_iter, "logical", "control_bayes()")
     val_class_and_single(save_pred, "logical", "control_bayes()")
     val_class_and_single(save_gp_scoring, "logical", "control_bayes()")
     val_class_and_single(save_workflow, "logical", "control_bayes()")
@@ -216,6 +241,8 @@ control_bayes <-
     val_class_or_null(pkgs, "character", "control_bayes()")
     val_class_and_single(event_level, "character", "control_bayes()")
     val_parallel_over(parallel_over, "control_bayes()")
+    val_class_and_single(allow_par, "logical", "control_bayes()")
+
 
     if (!is.infinite(uncertain) && uncertain > no_improve) {
       cli::cli_alert_warning(
@@ -226,6 +253,8 @@ control_bayes <-
     res <-
       list(
         verbose = verbose,
+        verbose_iter = verbose_iter,
+        allow_par = allow_par,
         no_improve = no_improve,
         uncertain = uncertain,
         seed = seed,
@@ -236,7 +265,8 @@ control_bayes <-
         save_workflow = save_workflow,
         save_gp_scoring = save_gp_scoring,
         event_level = event_level,
-        parallel_over = parallel_over
+        parallel_over = parallel_over,
+        backend_options = backend_options
       )
 
     class(res) <- "control_bayes"
@@ -259,4 +289,17 @@ val_parallel_over <- function(parallel_over, where) {
   rlang::arg_match0(parallel_over, c("resamples", "everything"), "parallel_over")
 
   invisible(NULL)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname control_grid
+new_backend_options <- function(..., class = character()) {
+  out <- rlang::list2(...)
+
+  if (any(rlang::names2(out) == "")) {
+    rlang::abort("All backend options must be named.")
+  }
+
+  structure(out, class = c(class, "tune_backend_options"))
 }

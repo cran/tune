@@ -1,3 +1,17 @@
+# tune 1.0.1
+
+* `last_fit()`, `fit_resamples()`, `tune_grid()`, and `tune_bayes()` do not automatically error if  the wrong type of `control` object is passed. If the passed control object is not a superset of the one that is needed, the function will still error. As an example, passing `control_grid()` to `tune_bayes()` will fail but passing `control_bayes()` to `tune_grid()` will not. ([#449](https://github.com/tidymodels/tune/issues/449))
+
+* The `collect_metrics()` method for racing objects was removed (and is now in the finetune package).
+
+* Improved prompts related to parameter tuning. When tuning parameters are supplied that are not compatible with the given engine, `tune_*()` functions will now error. (#549)
+
+* The `control_bayes()` got a new argument `verbose_iter` that is used to control the verbosity of the Bayesian calculations. This change means that the `verbose` argument is being passed to `tune_grid()` to control its verbosity.
+
+* The `control_last_fit()` function gained an argument `allow_par` that defaults to `FALSE`. This change addresses failures after `last_fit()` using modeling engines that require native serialization, and we anticipate little to no increase in time-to-fit resulting from this change. (#539, tidymodels/bonsai#52)
+
+* `show_notes()` does a better jobs of... showing notes. (#558)
+
 # tune 1.0.0
 
 * `show_notes()` is a new function that can better help understand warnings and errors. 

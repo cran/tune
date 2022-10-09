@@ -150,7 +150,9 @@ test_that("workflow objects", {
   wflow_2 <-
     workflow() %>%
     add_model(
-      parsnip::boost_tree(mtry = tune()) %>% parsnip::set_engine("xgboost")
+      parsnip::boost_tree(mtry = tune()) %>%
+        parsnip::set_engine("xgboost") %>%
+        parsnip::set_mode("regression")
     ) %>%
     add_recipe(bare_rec)
 
@@ -175,6 +177,66 @@ test_that("workflow objects", {
   expect_snapshot(error = TRUE, {
     tune:::check_workflow(wflow_4)
   })
+})
+
+test_that("workflow objects (will not tune, tidymodels/tune#548)", {
+  skip_if_not_installed("glmnet")
+
+  # one recipe without tuning, one with:
+  rec_bare <- recipes::recipe(ridership ~ ., data = head(Chicago, 30))
+  rec_tune <- rec_bare %>% recipes::step_ns(temp_max, deg_free = tune())
+
+  # well-defined:
+  lr_lm_0 <- parsnip::linear_reg()
+
+  # not well-defined:
+  lr_lm_1 <- parsnip::linear_reg(penalty = tune())
+  lr_lm_2 <- parsnip::linear_reg(penalty = tune(), mixture = tune())
+
+  # well-defined:
+  lr_glmnet_0 <- lr_lm_0 %>% set_engine("glmnet")
+  lr_glmnet_1 <- lr_lm_1 %>% set_engine("glmnet")
+  lr_glmnet_2 <- lr_lm_2 %>% set_engine("glmnet")
+
+  # don't error when supplied tune args make sense given engine / steps
+  expect_error_na <- function(x) {testthat::expect_error(x, regexp = NA)}
+
+  expect_error_na(check_workflow(workflow(rec_bare, lr_lm_0)))
+  expect_error_na(check_workflow(workflow(rec_bare, lr_glmnet_0)))
+  expect_error_na(check_workflow(workflow(rec_bare, lr_glmnet_1)))
+  expect_error_na(check_workflow(workflow(rec_bare, lr_glmnet_2)))
+
+  expect_error_na(check_workflow(workflow(rec_tune, lr_lm_0)))
+  expect_error_na(check_workflow(workflow(rec_tune, lr_glmnet_0)))
+  expect_error_na(check_workflow(workflow(rec_tune, lr_glmnet_1)))
+  expect_error_na(check_workflow(workflow(rec_tune, lr_glmnet_2)))
+
+  # error when supplied tune args don't make sense given engine / steps
+  expect_error_nt <- function(x) {testthat::expect_error(x, class = "not_tunable_error")}
+
+  expect_error_nt(check_workflow(workflow(rec_bare, lr_lm_1)))
+  expect_error_nt(check_workflow(workflow(rec_bare, lr_lm_2)))
+
+  expect_error_nt(check_workflow(workflow(rec_tune, lr_lm_1)))
+  expect_error_nt(check_workflow(workflow(rec_tune, lr_lm_2)))
+
+  # ensure that error (incl `call`) is displayed as it ought to be:
+  expect_snapshot(
+    error = TRUE,
+    tune_grid(
+      lr_lm_1,
+      rec_bare,
+      rsample::bootstraps(Chicago, 2)
+    )
+  )
+  expect_snapshot(
+    error = TRUE,
+    tune_bayes(
+      lr_lm_2,
+      rec_tune,
+      rsample::bootstraps(Chicago, 2)
+    )
+  )
 })
 
 # ------------------------------------------------------------------------------
