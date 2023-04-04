@@ -61,6 +61,10 @@ check_grid <- function(grid, workflow, pset = NULL) {
     }
 
     grid_distinct <- distinct(grid)
+
+    # remove attributes, particularly those tacked on by `expand.grid()`
+    grid_distinct <- vctrs::new_data_frame(grid_distinct, n = nrow(grid_distinct))
+
     if (!identical(nrow(grid_distinct), nrow(grid))) {
       rlang::warn(
         "Duplicate rows in grid of tuning combinations found and removed."
@@ -234,7 +238,7 @@ check_bayes_initial_size <- function(num_param, num_grid, race = FALSE) {
 
   if (num_grid < num_param + 1) {
     diff <- num_param - num_grid + 1
-    rlang::inform(
+    cli::cli_bullets(
       c(
         `!` = msg,
         `*` = cli::pluralize(
@@ -458,7 +462,7 @@ get_objective_name <- function(x, metrics) {
     metric_data <- metrics_info(metrics)
     x <- metric_data$.metric[1]
   } else {
-    # check for a name or acquisition funciton
+    # check for a name or acquisition function
   }
   x
 }

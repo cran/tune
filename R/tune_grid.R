@@ -158,8 +158,7 @@
 #' As noted above, in some cases, model predictions can be derived for
 #'  sub-models so that, in these cases, not every row in the tuning parameter
 #'  grid has a separate R object associated with it.
-#' @examples
-#' \donttest{
+#' @examplesIf tune:::should_run_examples(suggests = "kernlab")
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
@@ -233,7 +232,6 @@
 #'
 #' set.seed(3254)
 #' svm_res_wf <- tune_grid(wf, resamples = folds, grid = 7)
-#' }
 #' @export
 tune_grid <- function(object, ...) {
   UseMethod("tune_grid")
@@ -381,7 +379,7 @@ pull_rset_attributes <- function(x) {
   att <- attributes(x)
   att_nms <- names(att)
   att_nms <- setdiff(att_nms, excl_att)
-  att$class <- setdiff(class(x), class(tibble::tibble()))
+  att$class <- setdiff(class(x), class(tibble::new_tibble(list())))
   att$class <- att$class[att$class != "rset"]
 
   lab <- try(pretty(x), silent = TRUE)
@@ -409,7 +407,7 @@ set_workflow <- function(workflow, control) {
         cols <- get_tune_colors()
         msg <- strwrap(msg, prefix = paste0(cols$symbol$info(cli::symbol$info), " "))
         msg <- cols$message$info(paste0(msg, collapse = "\n"))
-        rlang::inform(msg)
+        cli::cli_bullets(msg)
       }
     }
     workflow

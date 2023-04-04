@@ -54,6 +54,7 @@
 #' @export
 filter_parameters <- function(x, ..., parameters = NULL) {
   cl_x <- as.character(match.call()$x)
+  check_filter_dots(rlang::enquos(...))
   # check for type
   if (!inherits(x, "tune_results")) {
     rlang::abort(paste0(cl_x, " should have class 'tune_results'."))
@@ -80,11 +81,11 @@ filter_by_join <- function(x, parameters = NULL, nm = "") {
   }
   extra_names <- setdiff(filter_names, param_names)
   if (length(extra_names) > 0) {
-    msg <- paste0(
-      "There are unneeded columns in `parameters` that were ignored: ",
-      paste0("'", extra_names, "'", collapse = ", ")
+    cli_warn(
+      "{qty(extra_names)} The column{?s} {.var {extra_names}} passed in \\
+       {.arg parameters} {?is/are} not needed and will be ignored."
     )
-    rlang::warn(msg)
+
     parameters <- parameters[, filter_names %in% param_names]
   }
 
@@ -126,4 +127,16 @@ filter_by_filter <- function(x, ...) {
     x$.extracts <- purrr::map(x$.extracts, ~ dplyr::filter(.x, !!!dots))
   }
   x
+}
+
+check_filter_dots <- function(dots, call = rlang::caller_env()) {
+  res <- purrr::map(dots, ~try(rlang::eval_tidy(.x), silent = TRUE))
+
+  if (any(purrr::map_lgl(res, inherits, "data.frame"))) {
+    rlang::abort(
+      c("An element passed to `...` is a data frame rather than a filter expression.",
+        "i" = "Did you forget to name the `parameters` argument?"),
+      call = call
+    )
+  }
 }

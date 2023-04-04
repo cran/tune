@@ -13,10 +13,11 @@
 #'
 #' @return A tibble with a column `x` that has as many rows as were in `y`.
 #' @keywords internal
-#' @examples
-#' \donttest{
+#' @examplesIf tune:::should_run_examples(suggests = c("xgboost", "modeldata"))
 #' library(tibble)
 #' library(recipes)
+#' library(parsnip)
+#' library(dials)
 #'
 #' pca_rec <-
 #'   recipe(mpg ~ ., data = mtcars) %>%
@@ -50,24 +51,19 @@
 #'
 #' merge(pca_rec, pca_grid)
 #'
-#' if (rlang::is_installed("modeldata")) {
-#'   library(parsnip)
-#'   library(dials)
-#'   data(hpc_data, package = "modeldata")
+#' data(hpc_data, package = "modeldata")
 #'
-#'   xgb_mod <-
-#'     boost_tree(trees = tune(), min_n = tune()) %>%
-#'     set_engine("xgboost")
+#' xgb_mod <-
+#'   boost_tree(trees = tune(), min_n = tune()) %>%
+#'   set_engine("xgboost")
 #'
-#'   set.seed(254)
-#'   xgb_grid <-
-#'     extract_parameter_set_dials(xgb_mod) %>%
-#'     finalize(hpc_data) %>%
-#'     grid_max_entropy(size = 3)
+#' set.seed(254)
+#' xgb_grid <-
+#'   extract_parameter_set_dials(xgb_mod) %>%
+#'   finalize(hpc_data) %>%
+#'   grid_max_entropy(size = 3)
 #'
-#'   merge(xgb_mod, xgb_grid)
-#' }
-#' }
+#' merge(xgb_mod, xgb_grid)
 #' @export
 merge.recipe <- function(x, y, ...) {
   merger(x, y, ...)
@@ -89,10 +85,10 @@ update_model <- function(grid, object, pset, step_id, nms, ...) {
     if (nrow(param_info) == 1) {
       if (param_info$component_id == "main") {
         object$args[[param_info$name]] <-
-          rlang::as_quosure(grid[[i]], env = rlang::empty_env())
+          rlang::as_quosure(grid[[i]][[1]], env = rlang::empty_env())
       } else {
         object$eng_args[[param_info$name]] <-
-          rlang::as_quosure(grid[[i]], env = rlang::empty_env())
+          rlang::as_quosure(grid[[i]][[1]], env = rlang::empty_env())
       }
     }
   }
@@ -120,7 +116,8 @@ merger <- function(x, y, ...) {
   pset <- hardhat::extract_parameter_set_dials(x)
 
   if (nrow(pset) == 0) {
-    res <- tibble::tibble(x = purrr::map(1:nrow(y), ~x))
+    res <- purrr::map(seq_len(nrow(y)), ~x)
+    res <- tibble::new_tibble(list(x = res), nrow = length(res))
     return(res)
   }
   grid_name <- colnames(y)
@@ -136,7 +133,8 @@ merger <- function(x, y, ...) {
   }
 
   if (!any(grid_name %in% pset$id)) {
-    res <- tibble::tibble(x = purrr::map(1:nrow(y), ~ x))
+    res <- purrr::map(seq_len(nrow(y)), ~ x)
+    res <- tibble::new_tibble(list(x = res), nrow = length(res))
     return(res)
   }
 

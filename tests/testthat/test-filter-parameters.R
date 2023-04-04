@@ -66,8 +66,6 @@ test_that("basic functionality", {
 # ------------------------------------------------------------------------------
 
 test_that("bad inputs", {
-  skip_if(tune:::dplyr_pre_1.0.0())
-
   svm_reg_results <- readRDS(test_path("data", "svm_reg_results.rds"))
 
   expect_snapshot(error = TRUE, {
@@ -80,9 +78,24 @@ test_that("bad inputs", {
     filter_parameters(svm_reg_results, tibble::tibble(soup = 1))
   })
   expect_snapshot(error = TRUE, {
+    filter_parameters(svm_reg_results, cost < 1, tibble::tibble(soup = 1))
+  })
+  expect_snapshot(error = TRUE, {
     filter_parameters(svm_reg_results, parameters = tibble::tibble(`%^*#` = 1 / 3))
   })
   expect_snapshot(
     filter_parameters(svm_reg_results, parameters = tibble::tibble(`%^*#` = 1, soup = 2))
+  )
+  expect_snapshot(
+    res <- filter_parameters(
+      svm_reg_results,
+      parameters = tibble::tibble(`%^*#` = 1, soup = 2, boop = 3)
+    )
+  )
+  expect_snapshot(
+    res <- filter_parameters(
+      svm_reg_results,
+      parameters = tibble::tibble(`%^*#` = 1, soup = 2, boop = 3, loop = 4)
+    )
   )
 })

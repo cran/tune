@@ -25,51 +25,61 @@
       v Fold01: preprocessor 1/1
       i Fold01: preprocessor 1/1, model 1/1
       v Fold01: preprocessor 1/1, model 1/1
+      i Fold01: preprocessor 1/1, model 1/1 (extracts)
       i Fold01: preprocessor 1/1, model 1/1 (predictions)
       i Fold02: preprocessor 1/1
       v Fold02: preprocessor 1/1
       i Fold02: preprocessor 1/1, model 1/1
       v Fold02: preprocessor 1/1, model 1/1
+      i Fold02: preprocessor 1/1, model 1/1 (extracts)
       i Fold02: preprocessor 1/1, model 1/1 (predictions)
       i Fold03: preprocessor 1/1
       v Fold03: preprocessor 1/1
       i Fold03: preprocessor 1/1, model 1/1
       v Fold03: preprocessor 1/1, model 1/1
+      i Fold03: preprocessor 1/1, model 1/1 (extracts)
       i Fold03: preprocessor 1/1, model 1/1 (predictions)
       i Fold04: preprocessor 1/1
       v Fold04: preprocessor 1/1
       i Fold04: preprocessor 1/1, model 1/1
       v Fold04: preprocessor 1/1, model 1/1
+      i Fold04: preprocessor 1/1, model 1/1 (extracts)
       i Fold04: preprocessor 1/1, model 1/1 (predictions)
       i Fold05: preprocessor 1/1
       v Fold05: preprocessor 1/1
       i Fold05: preprocessor 1/1, model 1/1
       v Fold05: preprocessor 1/1, model 1/1
+      i Fold05: preprocessor 1/1, model 1/1 (extracts)
       i Fold05: preprocessor 1/1, model 1/1 (predictions)
       i Fold06: preprocessor 1/1
       v Fold06: preprocessor 1/1
       i Fold06: preprocessor 1/1, model 1/1
       v Fold06: preprocessor 1/1, model 1/1
+      i Fold06: preprocessor 1/1, model 1/1 (extracts)
       i Fold06: preprocessor 1/1, model 1/1 (predictions)
       i Fold07: preprocessor 1/1
       v Fold07: preprocessor 1/1
       i Fold07: preprocessor 1/1, model 1/1
       v Fold07: preprocessor 1/1, model 1/1
+      i Fold07: preprocessor 1/1, model 1/1 (extracts)
       i Fold07: preprocessor 1/1, model 1/1 (predictions)
       i Fold08: preprocessor 1/1
       v Fold08: preprocessor 1/1
       i Fold08: preprocessor 1/1, model 1/1
       v Fold08: preprocessor 1/1, model 1/1
+      i Fold08: preprocessor 1/1, model 1/1 (extracts)
       i Fold08: preprocessor 1/1, model 1/1 (predictions)
       i Fold09: preprocessor 1/1
       v Fold09: preprocessor 1/1
       i Fold09: preprocessor 1/1, model 1/1
       v Fold09: preprocessor 1/1, model 1/1
+      i Fold09: preprocessor 1/1, model 1/1 (extracts)
       i Fold09: preprocessor 1/1, model 1/1 (predictions)
       i Fold10: preprocessor 1/1
       v Fold10: preprocessor 1/1
       i Fold10: preprocessor 1/1, model 1/1
       v Fold10: preprocessor 1/1, model 1/1
+      i Fold10: preprocessor 1/1, model 1/1 (extracts)
       i Fold10: preprocessor 1/1, model 1/1 (predictions)
       v Estimating performance
       (x) Newest results:	rmse=2.666 (+/-0.281)
@@ -88,51 +98,61 @@
       v Fold01: preprocessor 1/1
       i Fold01: preprocessor 1/1, model 1/1
       v Fold01: preprocessor 1/1, model 1/1
+      i Fold01: preprocessor 1/1, model 1/1 (extracts)
       i Fold01: preprocessor 1/1, model 1/1 (predictions)
       i Fold02: preprocessor 1/1
       v Fold02: preprocessor 1/1
       i Fold02: preprocessor 1/1, model 1/1
       v Fold02: preprocessor 1/1, model 1/1
+      i Fold02: preprocessor 1/1, model 1/1 (extracts)
       i Fold02: preprocessor 1/1, model 1/1 (predictions)
       i Fold03: preprocessor 1/1
       v Fold03: preprocessor 1/1
       i Fold03: preprocessor 1/1, model 1/1
       v Fold03: preprocessor 1/1, model 1/1
+      i Fold03: preprocessor 1/1, model 1/1 (extracts)
       i Fold03: preprocessor 1/1, model 1/1 (predictions)
       i Fold04: preprocessor 1/1
       v Fold04: preprocessor 1/1
       i Fold04: preprocessor 1/1, model 1/1
       v Fold04: preprocessor 1/1, model 1/1
+      i Fold04: preprocessor 1/1, model 1/1 (extracts)
       i Fold04: preprocessor 1/1, model 1/1 (predictions)
       i Fold05: preprocessor 1/1
       v Fold05: preprocessor 1/1
       i Fold05: preprocessor 1/1, model 1/1
       v Fold05: preprocessor 1/1, model 1/1
+      i Fold05: preprocessor 1/1, model 1/1 (extracts)
       i Fold05: preprocessor 1/1, model 1/1 (predictions)
       i Fold06: preprocessor 1/1
       v Fold06: preprocessor 1/1
       i Fold06: preprocessor 1/1, model 1/1
       v Fold06: preprocessor 1/1, model 1/1
+      i Fold06: preprocessor 1/1, model 1/1 (extracts)
       i Fold06: preprocessor 1/1, model 1/1 (predictions)
       i Fold07: preprocessor 1/1
       v Fold07: preprocessor 1/1
       i Fold07: preprocessor 1/1, model 1/1
       v Fold07: preprocessor 1/1, model 1/1
+      i Fold07: preprocessor 1/1, model 1/1 (extracts)
       i Fold07: preprocessor 1/1, model 1/1 (predictions)
       i Fold08: preprocessor 1/1
       v Fold08: preprocessor 1/1
       i Fold08: preprocessor 1/1, model 1/1
       v Fold08: preprocessor 1/1, model 1/1
+      i Fold08: preprocessor 1/1, model 1/1 (extracts)
       i Fold08: preprocessor 1/1, model 1/1 (predictions)
       i Fold09: preprocessor 1/1
       v Fold09: preprocessor 1/1
       i Fold09: preprocessor 1/1, model 1/1
       v Fold09: preprocessor 1/1, model 1/1
+      i Fold09: preprocessor 1/1, model 1/1 (extracts)
       i Fold09: preprocessor 1/1, model 1/1 (predictions)
       i Fold10: preprocessor 1/1
       v Fold10: preprocessor 1/1
       i Fold10: preprocessor 1/1, model 1/1
       v Fold10: preprocessor 1/1, model 1/1
+      i Fold10: preprocessor 1/1, model 1/1 (extracts)
       i Fold10: preprocessor 1/1, model 1/1 (predictions)
       v Estimating performance
       (x) Newest results:	rmse=2.453 (+/-0.381)
@@ -152,7 +172,7 @@
        8 <split [29/3]> Fold08 <tibble [4 x 5]> <tibble [0 x 3]>     0
        9 <split [29/3]> Fold09 <tibble [4 x 5]> <tibble [0 x 3]>     0
       10 <split [29/3]> Fold10 <tibble [4 x 5]> <tibble [0 x 3]>     0
-      # ... with 20 more rows
+      # i 20 more rows
 
 ---
 
@@ -181,7 +201,7 @@
        8 <split [29/3]> Fold08 <tibble [4 x 5]> <tibble [0 x 3]>     0
        9 <split [29/3]> Fold09 <tibble [4 x 5]> <tibble [0 x 3]>     0
       10 <split [29/3]> Fold10 <tibble [4 x 5]> <tibble [0 x 3]>     0
-      # ... with 20 more rows
+      # i 20 more rows
 
 ---
 
@@ -211,51 +231,61 @@
       v Fold01: preprocessor 1/1
       i Fold01: preprocessor 1/1, model 1/1
       v Fold01: preprocessor 1/1, model 1/1
+      i Fold01: preprocessor 1/1, model 1/1 (extracts)
       i Fold01: preprocessor 1/1, model 1/1 (predictions)
       i Fold02: preprocessor 1/1
       v Fold02: preprocessor 1/1
       i Fold02: preprocessor 1/1, model 1/1
       v Fold02: preprocessor 1/1, model 1/1
+      i Fold02: preprocessor 1/1, model 1/1 (extracts)
       i Fold02: preprocessor 1/1, model 1/1 (predictions)
       i Fold03: preprocessor 1/1
       v Fold03: preprocessor 1/1
       i Fold03: preprocessor 1/1, model 1/1
       v Fold03: preprocessor 1/1, model 1/1
+      i Fold03: preprocessor 1/1, model 1/1 (extracts)
       i Fold03: preprocessor 1/1, model 1/1 (predictions)
       i Fold04: preprocessor 1/1
       v Fold04: preprocessor 1/1
       i Fold04: preprocessor 1/1, model 1/1
       v Fold04: preprocessor 1/1, model 1/1
+      i Fold04: preprocessor 1/1, model 1/1 (extracts)
       i Fold04: preprocessor 1/1, model 1/1 (predictions)
       i Fold05: preprocessor 1/1
       v Fold05: preprocessor 1/1
       i Fold05: preprocessor 1/1, model 1/1
       v Fold05: preprocessor 1/1, model 1/1
+      i Fold05: preprocessor 1/1, model 1/1 (extracts)
       i Fold05: preprocessor 1/1, model 1/1 (predictions)
       i Fold06: preprocessor 1/1
       v Fold06: preprocessor 1/1
       i Fold06: preprocessor 1/1, model 1/1
       v Fold06: preprocessor 1/1, model 1/1
+      i Fold06: preprocessor 1/1, model 1/1 (extracts)
       i Fold06: preprocessor 1/1, model 1/1 (predictions)
       i Fold07: preprocessor 1/1
       v Fold07: preprocessor 1/1
       i Fold07: preprocessor 1/1, model 1/1
       v Fold07: preprocessor 1/1, model 1/1
+      i Fold07: preprocessor 1/1, model 1/1 (extracts)
       i Fold07: preprocessor 1/1, model 1/1 (predictions)
       i Fold08: preprocessor 1/1
       v Fold08: preprocessor 1/1
       i Fold08: preprocessor 1/1, model 1/1
       v Fold08: preprocessor 1/1, model 1/1
+      i Fold08: preprocessor 1/1, model 1/1 (extracts)
       i Fold08: preprocessor 1/1, model 1/1 (predictions)
       i Fold09: preprocessor 1/1
       v Fold09: preprocessor 1/1
       i Fold09: preprocessor 1/1, model 1/1
       v Fold09: preprocessor 1/1, model 1/1
+      i Fold09: preprocessor 1/1, model 1/1 (extracts)
       i Fold09: preprocessor 1/1, model 1/1 (predictions)
       i Fold10: preprocessor 1/1
       v Fold10: preprocessor 1/1
       i Fold10: preprocessor 1/1, model 1/1
       v Fold10: preprocessor 1/1, model 1/1
+      i Fold10: preprocessor 1/1, model 1/1 (extracts)
       i Fold10: preprocessor 1/1, model 1/1 (predictions)
       v Estimating performance
       (x) Newest results:	rmse=2.666 (+/-0.281)
@@ -274,51 +304,61 @@
       v Fold01: preprocessor 1/1
       i Fold01: preprocessor 1/1, model 1/1
       v Fold01: preprocessor 1/1, model 1/1
+      i Fold01: preprocessor 1/1, model 1/1 (extracts)
       i Fold01: preprocessor 1/1, model 1/1 (predictions)
       i Fold02: preprocessor 1/1
       v Fold02: preprocessor 1/1
       i Fold02: preprocessor 1/1, model 1/1
       v Fold02: preprocessor 1/1, model 1/1
+      i Fold02: preprocessor 1/1, model 1/1 (extracts)
       i Fold02: preprocessor 1/1, model 1/1 (predictions)
       i Fold03: preprocessor 1/1
       v Fold03: preprocessor 1/1
       i Fold03: preprocessor 1/1, model 1/1
       v Fold03: preprocessor 1/1, model 1/1
+      i Fold03: preprocessor 1/1, model 1/1 (extracts)
       i Fold03: preprocessor 1/1, model 1/1 (predictions)
       i Fold04: preprocessor 1/1
       v Fold04: preprocessor 1/1
       i Fold04: preprocessor 1/1, model 1/1
       v Fold04: preprocessor 1/1, model 1/1
+      i Fold04: preprocessor 1/1, model 1/1 (extracts)
       i Fold04: preprocessor 1/1, model 1/1 (predictions)
       i Fold05: preprocessor 1/1
       v Fold05: preprocessor 1/1
       i Fold05: preprocessor 1/1, model 1/1
       v Fold05: preprocessor 1/1, model 1/1
+      i Fold05: preprocessor 1/1, model 1/1 (extracts)
       i Fold05: preprocessor 1/1, model 1/1 (predictions)
       i Fold06: preprocessor 1/1
       v Fold06: preprocessor 1/1
       i Fold06: preprocessor 1/1, model 1/1
       v Fold06: preprocessor 1/1, model 1/1
+      i Fold06: preprocessor 1/1, model 1/1 (extracts)
       i Fold06: preprocessor 1/1, model 1/1 (predictions)
       i Fold07: preprocessor 1/1
       v Fold07: preprocessor 1/1
       i Fold07: preprocessor 1/1, model 1/1
       v Fold07: preprocessor 1/1, model 1/1
+      i Fold07: preprocessor 1/1, model 1/1 (extracts)
       i Fold07: preprocessor 1/1, model 1/1 (predictions)
       i Fold08: preprocessor 1/1
       v Fold08: preprocessor 1/1
       i Fold08: preprocessor 1/1, model 1/1
       v Fold08: preprocessor 1/1, model 1/1
+      i Fold08: preprocessor 1/1, model 1/1 (extracts)
       i Fold08: preprocessor 1/1, model 1/1 (predictions)
       i Fold09: preprocessor 1/1
       v Fold09: preprocessor 1/1
       i Fold09: preprocessor 1/1, model 1/1
       v Fold09: preprocessor 1/1, model 1/1
+      i Fold09: preprocessor 1/1, model 1/1 (extracts)
       i Fold09: preprocessor 1/1, model 1/1 (predictions)
       i Fold10: preprocessor 1/1
       v Fold10: preprocessor 1/1
       i Fold10: preprocessor 1/1, model 1/1
       v Fold10: preprocessor 1/1, model 1/1
+      i Fold10: preprocessor 1/1, model 1/1 (extracts)
       i Fold10: preprocessor 1/1, model 1/1 (predictions)
       v Estimating performance
       (x) Newest results:	rmse=2.453 (+/-0.381)
@@ -338,20 +378,24 @@
        8 <split [29/3]> Fold08 <tibble [4 x 5]> <tibble [0 x 3]>     0
        9 <split [29/3]> Fold09 <tibble [4 x 5]> <tibble [0 x 3]>     0
       10 <split [29/3]> Fold10 <tibble [4 x 5]> <tibble [0 x 3]>     0
-      # ... with 20 more rows
+      # i 20 more rows
 
 # tune model only - failure in recipe is caught elegantly
 
     Code
       cars_res <- tune_bayes(svm_mod, preprocessor = rec, resamples = data_folds)
     Message
-      x Fold1: preprocessor 1/1: Error in if (!is.null(args$df) && is.null(args$knots) && args$df - degre...
-      x Fold2: preprocessor 1/1: Error in if (!is.null(args$df) && is.null(args$knots) && args$df - degre...
+      x Fold1: preprocessor 1/1:
+        Error in `step_bs()`:
+        Caused by error in `if (...) NULL`:
+        ! missing value where TRUE/FALSE needed
+      x Fold2: preprocessor 1/1:
+        Error in `step_bs()`:
+        Caused by error in `if (...) NULL`:
+        ! missing value where TRUE/FALSE needed
     Condition
       Warning:
       All models failed. Run `show_notes(.Last.tune.result)` for more information.
-      Error in `estimate_tune_results()`:
-      ! All of the models failed. See the .notes column.
     Message
       x Optimization stopped prematurely; returning current results.
 
@@ -372,8 +416,6 @@
     Condition
       Warning:
       All models failed. Run `show_notes(.Last.tune.result)` for more information.
-      Error in `estimate_tune_results()`:
-      ! All of the models failed. See the .notes column.
     Message
       x Optimization stopped prematurely; returning current results.
 
@@ -411,7 +453,8 @@
       tune:::check_bayes_initial_size(5, 3, FALSE)
     Message
       ! There are 5 tuning parameters and 3 grid points were requested.
-      * There are more tuning parameters than there are initial points. This is likely to cause numerical issues in the first few search iterations.
+      * There are more tuning parameters than there are initial points. This is
+        likely to cause numerical issues in the first few search iterations.
 
 ---
 
@@ -419,7 +462,8 @@
       tune:::check_bayes_initial_size(5, 3, TRUE)
     Message
       ! There are 5 tuning parameters and 3 grid points were requested.
-      * There are more tuning parameters than there are initial points. This is likely to cause numerical issues in the first few search iterations.
+      * There are more tuning parameters than there are initial points. This is
+        likely to cause numerical issues in the first few search iterations.
       * With racing, only completely resampled parameters are used.
 
 ---
@@ -428,7 +472,8 @@
       tune:::check_bayes_initial_size(2, 2, FALSE)
     Message
       ! There are 2 tuning parameters and 2 grid points were requested.
-      * There are as many tuning parameters as there are initial points. This is likely to cause numerical issues in the first few search iterations.
+      * There are as many tuning parameters as there are initial points. This is
+        likely to cause numerical issues in the first few search iterations.
 
 ---
 
@@ -466,28 +511,68 @@
         Bldg_Type + Latitude + Longitude, resamples = folds, initial = 3, metrics = yardstick::metric_set(
         rsq), param_info = parameters(dials::cost_complexity(c(-2, 0))))
     Message
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9998726`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 1 missing value was found and removed before fitting
         the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9995734`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 2 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9995`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 3 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9992439`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 4 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9996399`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 5 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9994867`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 6 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9997809`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! For the rsq estimates, 7 missing values were found and removed before
         fitting the Gaussian process model.
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 0.9999164`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
 
 ---
 
@@ -498,11 +583,36 @@
       metrics = yardstick::metric_set(rsq), param_info = parameters(dials::cost_complexity(
         c(0.5, 0))))
     Message
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
-      ! validation: internal: A correlation computation is required, but `estimate` is constant and ha...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 1.95966`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 2.500534`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 1.263317`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 2.792327`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
+      ! validation: internal:
+        There was 1 warning in `dplyr::summarise()`.
+        i In argument: `.estimate = metric_fn(truth = Sale_Price, estimate = ....
+        i In group 1: `cost_complexity = 1.224671`.
+        Caused by warning:
+        ! A correlation computation is required, but `estimate` is constant an...
       ! All of the rsq estimates were missing. The Gaussian process model cannot be
         fit to the data.
       ! Gaussian process model: no non-missing arguments to min; returning Inf, no non-missing arguments...

@@ -167,7 +167,7 @@ function generates a column called \code{.pred} and so on. As noted above, the
 prediction columns that are returned are determined by the type of metric(s)
 requested.
 
-This list column can be \code{unnested} using \code{\link[tidyr:nest]{tidyr::unnest()}} or using the
+This list column can be \code{unnested} using \code{\link[tidyr:unnest]{tidyr::unnest()}} or using the
 convenience function \code{\link[=collect_predictions]{collect_predictions()}}.
 }
 
@@ -205,7 +205,7 @@ grid has a separate R object associated with it.
 }
 
 \examples{
-\donttest{
+\dontshow{if (tune:::should_run_examples(suggests = "kernlab")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(rsample)
 library(parsnip)
@@ -279,7 +279,7 @@ wf <- workflow() \%>\%
 
 set.seed(3254)
 svm_res_wf <- tune_grid(wf, resamples = folds, grid = 7)
-}
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=control_grid]{control_grid()}}, \code{\link[=tune]{tune()}}, \code{\link[=fit_resamples]{fit_resamples()}},

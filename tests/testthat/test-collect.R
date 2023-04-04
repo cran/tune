@@ -149,6 +149,7 @@ test_that("classification class and prob predictions, averaged", {
 
 test_that("collecting notes - fit_resamples", {
   skip_if(new_rng_snapshots)
+  skip_if(rankdeficient_version)
 
   mtcars2 <- mtcars %>% mutate(wt2 = wt)
   set.seed(1)
@@ -169,6 +170,10 @@ test_that("collecting notes - fit_resamples", {
 })
 
 test_that("collecting notes - last_fit", {
+  skip_if(rankdeficient_version)
+
+  options(pillar.advice = FALSE, pillar.min_title_chars = Inf)
+
   mtcars2 <- mtcars %>% mutate(wt2 = wt)
   set.seed(1)
   split <- rsample::initial_split(mtcars2)
@@ -185,4 +190,28 @@ test_that("collecting notes - last_fit", {
   expect_true(all(nts$type == "warning"))
   expect_true(all(grepl("rank", nts$note)))
   expect_equal(names(nts), c("location", "type", "note"))
+})
+
+test_that("collecting extracted objects - fit_resamples", {
+  # skip pre-R-4.0.0 so that snaps aren't affected by stringsAsFactors change
+  skip_if(R.Version()$major < "4")
+
+  spec <- parsnip::linear_reg()
+  form <- mpg ~ .
+  set.seed(1)
+  boots <- rsample::bootstraps(mtcars, 5)
+
+  ctrl_fit <- control_resamples(extract = extract_fit_engine)
+  ctrl_err <- control_resamples(extract = function(x) {stop("eeeep! eep!")})
+
+  res_fit <-     fit_resamples(spec, form, boots, control = ctrl_fit)
+  res_nothing <- fit_resamples(spec, form, boots)
+  suppressMessages({
+    res_error <-   fit_resamples(spec, form, boots, control = ctrl_err)
+  })
+
+  expect_snapshot(collect_extracts(res_fit))
+  expect_snapshot(collect_extracts(res_nothing), error = TRUE)
+  expect_snapshot(collect_extracts(res_error))
+  expect_snapshot(collect_extracts("boop"), error = TRUE)
 })

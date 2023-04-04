@@ -7,7 +7,7 @@
 #' @importFrom rlang is_false eval_tidy expr sym syms env_get is_function :=
 #' @importFrom rlang is_missing %||%
 #' @importFrom glue glue glue_collapse
-#' @importFrom dials parameters_constr is_unknown encode_unit
+#' @importFrom dials is_unknown encode_unit
 #' @importFrom stats sd qt qnorm dnorm pnorm predict model.matrix setNames
 #' @importFrom stats model.matrix model.response model.frame update
 #' @importFrom yardstick rsq rmse accuracy roc_auc
@@ -19,6 +19,7 @@
 #' @importFrom ggplot2 facet_grid geom_line aes_string aes_
 #' @importFrom cli cli_alert_danger cli_alert_info cli_alert_warning
 #' @importFrom cli cli_alert_success cli_alert
+#' @importFrom cli cli_inform cli_warn cli_abort qty
 #' @importFrom foreach foreach getDoParName %dopar%
 #' @importFrom tibble obj_sum size_sum
 
@@ -42,19 +43,17 @@ utils::globalVariables(
     ".extracts", ".metrics", "value", ".notes", ".loss", ".bound",
     ".column", ".totals", ".value", "direction", ".config", "Freq", "Prediction",
     "Truth", ".seed", ".order", ".iter_model", ".iter_preprocessor",
-    ".iter_config", ".msg_model", "# resamples", "seed", "pre", "type"
+    ".iter_config", ".msg_model", "# resamples", "seed", "pre", "type",
+    "rowwise", ".best", "location", "msg"
   )
 )
 
 # ------------------------------------------------------------------------------
 
-tidyr_new_interface <- function() {
-  utils::packageVersion("tidyr") > "0.8.99"
-}
-
 release_bullets <- function() {
   c(
-    "Update dependencies with `devtools::install_dev_deps()` and update the test objects via `R CMD BATCH --vanilla inst/test_objects.R`."
+    "Update dependencies with `devtools::install_dev_deps()` and update the test objects via `R CMD BATCH --vanilla inst/test_objects.R`.",
+    "Confirm issue cataloger gives expected output in `inst/test_catalog.R`."
   )
 }
 

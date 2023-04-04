@@ -46,8 +46,11 @@
 #' [collect_notes()] returns a tibble with columns for the resampling
 #' indicators, the location (preprocessor, model, etc.), type (error or warning),
 #' and the notes.
-#' @examples
-#' \donttest{
+#'
+#' [collect_extracts()] returns a tibble with columns for the resampling
+#' indicators, the location (preprocessor, model, etc.), and objects extracted
+#' from workflows via the `extract` argument to [control functions][control_grid()].
+#' @examplesIf tune:::should_run_examples(suggests = "kknn")
 #' data("example_ames_knn")
 #' # The parameters for the model:
 #' extract_parameter_set_dials(ames_wflow)
@@ -70,7 +73,7 @@
 #' lm_mod <- linear_reg() %>% set_engine("lm")
 #' set.seed(93599150)
 #' car_folds <- vfold_cv(mtcars, v = 2, repeats = 3)
-#' ctrl <- control_resamples(save_pred = TRUE)
+#' ctrl <- control_resamples(save_pred = TRUE, extract = extract_fit_engine)
 #'
 #' spline_rec <-
 #'   recipe(mpg ~ ., data = mtcars) %>%
@@ -85,7 +88,9 @@
 #' collect_predictions(resampled) %>% arrange(.row)
 #' collect_predictions(resampled, summarize = TRUE) %>% arrange(.row)
 #' collect_predictions(resampled, summarize = TRUE, grid[1, ]) %>% arrange(.row)
-#' }
+#'
+#' collect_extracts(resampled)
+#'
 #' @export
 collect_predictions <- function(x, ...) {
   UseMethod("collect_predictions")
@@ -186,10 +191,10 @@ numeric_summarize <- function(x) {
   x <-
     x %>%
     dplyr::group_by(!!!rlang::syms(group_cols)) %>%
-    dplyr::summarise_at(
-      dplyr::vars(dplyr::starts_with(".pred")),
-      ~ mean(., na.rm = TRUE)
+    dplyr::summarise(
+      dplyr::across(dplyr::starts_with(".pred"), mean_na_rm)
     )
+
   x
 }
 
@@ -211,9 +216,8 @@ prob_summarize <- function(x, p) {
   x <-
     x %>%
     dplyr::group_by(!!!rlang::syms(group_cols)) %>%
-    dplyr::summarise_at(
-      dplyr::vars(dplyr::starts_with(".pred_")),
-      ~ mean(., na.rm = TRUE)
+    dplyr::summarise(
+      dplyr::across(dplyr::starts_with(".pred_"), mean_na_rm)
     ) %>%
     ungroup()
 
@@ -234,7 +238,10 @@ prob_summarize <- function(x, p) {
   x <-
     x %>%
     dplyr::full_join(totals, by = group_cols) %>%
-    dplyr::mutate_at(dplyr::vars(dplyr::starts_with(".pred_")), ~ . / .totals) %>%
+    dplyr::mutate(
+      dplyr::across(dplyr::starts_with(".pred_"),
+      ~ .x / .totals
+    )) %>%
     dplyr::select(-.totals)
 
   # If we started with hard class predictions, recompute them based on the
@@ -262,6 +269,12 @@ prob_summarize <- function(x, p) {
     x <- full_join(x, class_pred, by = group_cols)
   }
   x
+}
+
+# define a `mean()` wrapper to avoid slowdown in
+# evaluation of anonymous function
+mean_na_rm <- function(x) {
+  mean(x, na.rm = TRUE)
 }
 
 class_summarize <- function(x, p) {
@@ -353,62 +366,118 @@ collector <- function(x, coll_col = ".predictions") {
   } else {
     keep_cols <- coll_col
   }
-  x <- dplyr::select(x, dplyr::starts_with("id"), !!!keep_cols)
-  x <- tidyr::unnest(x, cols = c(dplyr::all_of(coll_col)))
+
+  id_cols <- colnames(x)[grepl("id", colnames(x))]
+  keep_cols <- c(coll_col, id_cols)
+  x <- x[keep_cols]
+  coll_col <- x[[coll_col]]
+
+  res <-
+    vctrs::vec_cbind(
+      vctrs::vec_rep_each(x[, id_cols], times = vctrs::list_sizes(coll_col)),
+      vctrs::list_unchop(coll_col)
+    )
+
   arrange_cols <- c(".iter", ".config")
-  arrange_cols <- arrange_cols[(arrange_cols %in% names(x))]
-  arrange(x, !!!rlang::syms(arrange_cols))
+  arrange_cols <- arrange_cols[rlang::has_name(res, arrange_cols)]
+
+  res <- vctrs::vec_slice(res, vctrs::vec_order(res[arrange_cols]))
 }
 
 #' @export
 #' @keywords internal
 #' @rdname empty_ellipses
-estimate_tune_results <- function(x, ...) {
+# Get relationship between the parameter values, .config, and (potentially) .iter
+.config_key_from_metrics <- function(x) {
   param_names <- .get_tune_parameter_names(x)
+  tibble_metrics <- purrr::map_lgl(x[[".metrics"]], tibble::is_tibble)
+  x <- vec_slice(x, tibble_metrics)
+  x <- x[, colnames(x) %in% c(".iter", ".metrics")]
+
+  metrics <- x[[".metrics"]]
+
+  out <- vctrs::list_unchop(metrics)
+  out <- out[c(param_names, ".config")]
+
+  if (rlang::has_name(x, ".iter")) {
+    iter <- x[[".iter"]]
+    out[[".iter"]] <- vctrs::vec_rep_each(iter, times = vctrs::list_sizes(metrics))
+  }
+
+  out <- vctrs::vec_unique(out)
+
+  out
+}
+
+#' @export
+#' @keywords internal
+#' @rdname empty_ellipses
+estimate_tune_results <- function(x, col_name = ".metrics", ...) {
+  param_names <- .get_tune_parameter_names(x)
+  id_names <- grep("^id", names(x), value = TRUE)
 
   all_bad <- is_cataclysmic(x)
   if (all_bad) {
-    rlang::abort("All of the models failed. See the .notes column.")
+    rlang::abort("All models failed. Run `show_notes(.Last.tune.result)` for more information.")
   }
 
-  tibble_metrics <- purrr::map_lgl(x$.metrics, tibble::is_tibble)
-  x <- x[tibble_metrics, ]
+  # The mapping of tuning parameters and .config.
+  config_key <- .config_key_from_metrics(x)
 
-  if (any(names(x) == ".iter")) {
-    keep_cols <- c(".iter", ".metrics")
-  } else {
-    keep_cols <- ".metrics"
+  tibble_metrics <- purrr::map_lgl(x[[col_name]], tibble::is_tibble)
+  x <- x[tibble_metrics, c(id_names, col_name)]
+  x <- tidyr::unnest(x, cols = c(all_of(col_name)))
+
+  if (col_name == ".extracts") {
+    # For sub-model parameters, there are parameter columns in the current tibble
+    # but the list column of tibbles may also have some of those parameter columns
+    # too (and these are more accurate). We will see if there is overlap and
+    # delete the top-level columns.
+    outer_names <- names(x)
+    inner_names <- names(x$.extracts[[1]])
+    conflicts <- intersect(outer_names, inner_names)
+    conflicts <- intersect(conflicts, param_names)
+    if (length(conflicts) > 0) {
+      x <- dplyr::select(x, -dplyr::all_of(conflicts))
+    }
+    # Now bring the extract values to the top
+    x <- tidyr::unnest(x, cols = .extracts)
+    # There may _still_ be list columns and, if there are, un-nest these.
+    is_list_col <- purrr::map_lgl(x, is.list)
+    if (any(is_list_col)) {
+      list_cols <- names(is_list_col)[is_list_col]
+      x <- tidyr::unnest(x, cols = c(dplyr::all_of(list_cols)))
+    }
+    # Again, for models with sub-model parameters, the current .config may not
+    # be accurate so we remove it and merge back in later.
+    x$.config <- NULL
+    if (any(names(x) == ".iter")) {
+      x$.iter <- NULL
+    }
+
+    x <- dplyr::distinct(x)
   }
-  x <- tidyr::unnest(x, cols = dplyr::all_of(keep_cols))
-
-  all_col <- names(x)
-  excl_cols <- c(
-    ".metric", ".estimator", ".estimate", "splits", ".notes",
-    grep("^id", all_col, value = TRUE), ".predictions", ".extracts"
-  )
-  param_names <- all_col[!(all_col %in% excl_cols)]
   x <- x %>%
     tibble::as_tibble() %>%
     dplyr::group_by(!!!rlang::syms(param_names), .metric, .estimator) %>%
     dplyr::summarize(
       mean = mean(.estimate, na.rm = TRUE),
       n = sum(!is.na(.estimate)),
-      std_err = sd(.estimate, na.rm = TRUE) / sqrt(n)
-    ) %>%
-    dplyr::ungroup()
+      std_err = sd(.estimate, na.rm = TRUE) / sqrt(n),
+      .groups = "drop"
+    )
 
-  if (".config" %in% param_names) {
-    arrange_names <- c(".iter", ".config")
-    arrange_names <- arrange_names[(arrange_names %in% param_names)]
-    join_names <- param_names[!(param_names %in% arrange_names)]
-    x <- dplyr::inner_join(
-      dplyr::select(x, !dplyr::all_of(arrange_names)),
-      x,
-      by = c(join_names, ".metric", ".estimator", "mean", "n", "std_err")
-    ) %>%
-      dplyr::arrange(!!!rlang::syms(arrange_names))
+  # only join when parameters are being tuned (#600)
+  if (length(param_names) == 0) {
+    x <- x %>%
+      dplyr::bind_cols(config_key)
+  } else {
+    x <- x %>%
+      dplyr::full_join(config_key, by = param_names)
   }
-  x
+
+  arrange_names <- intersect(c(".iter", ".config"), names(x))
+  dplyr::arrange(x, !!!rlang::syms(arrange_names))
 }
 
 # ------------------------------------------------------------------------------
@@ -435,3 +504,33 @@ collect_notes.tune_results <- function(x, ...) {
     dplyr::select(dplyr::starts_with("id"), dplyr::any_of(".iter"), .notes) %>%
     tidyr::unnest(cols = .notes)
 }
+
+# ----------------------------------------------------------------------------
+
+#' @export
+#' @rdname collect_predictions
+collect_extracts <- function(x, ...) {
+  UseMethod("collect_extracts")
+}
+
+#' @export
+collect_extracts.default <- function(x, ...) {
+  rlang::abort("No `collect_extracts()` exists for this type of object.")
+}
+
+#' @export
+#' @rdname collect_predictions
+collect_extracts.tune_results <- function(x, ...) {
+  if (!".extracts" %in% colnames(x)) {
+    cli::cli_abort(c(
+      "!" = "The {.var .extracts} column does not exist.",
+      "i" = "Please supply a {.help [control object](tune::control_grid)} with \\
+             a non-{.var NULL} {.arg extract} argument during resample fitting."
+    ))
+  }
+
+  x %>%
+    dplyr::select(dplyr::starts_with("id"), dplyr::any_of(".iter"), .extracts) %>%
+    tidyr::unnest(cols = .extracts)
+}
+

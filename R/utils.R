@@ -49,7 +49,7 @@ is_cran_check <- function() {
 
 # suggests: a character vector of package names, giving packages
 #           listed in Suggests that are needed for the example.
-# for use a la `@examplesIf (tune:::should_run_examples())`
+# for use a la `@examplesIf tune:::should_run_examples()`
 should_run_examples <- function(suggests = NULL) {
   has_needed_installs <- TRUE
 
@@ -92,7 +92,7 @@ new_bare_tibble <- function(x, ..., class = character()) {
   if (any(names(x) == "parameters")) {
     res <- x$parameters
   } else {
-    res <- tibble::tibble()
+    res <- tibble::new_tibble(list())
   }
   res
 }

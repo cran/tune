@@ -127,7 +127,7 @@
 #'
 #' @inheritSection tune_grid Extracting Information
 #'
-#' @examplesIf (tune:::should_run_examples(suggests = "kernlab"))
+#' @examplesIf tune:::should_run_examples(suggests = "kernlab")
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
@@ -251,6 +251,8 @@ tune_bayes_workflow <-
            initial = 5, control = control_bayes(), ...) {
     start_time <- proc.time()[3]
 
+    initialize_catalog(control = control)
+
     check_rset(resamples)
     rset_info <- pull_rset_attributes(resamples)
 
@@ -274,10 +276,8 @@ tune_bayes_workflow <-
     # Pull outcome names from initialization run
     outcomes <- peek_tune_results_outcomes(unsummarized)
 
-    # Strip off `tune_results` class and drop all attributes since
-    # we add on an `iteration_results` class later.
-    unsummarized <- new_bare_tibble(unsummarized)
-
+    evalq({
+    # Return whatever we have if there is a error (or execution is stopped)
     on.exit({
       cli::cli_alert_danger("Optimization stopped prematurely; returning current results.")
 
@@ -290,10 +290,23 @@ tune_bayes_workflow <-
         workflow = NULL
       )
 
+      .stash_last_result(out)
+
       return(out)
     })
 
+    # Preempt `estimate_tune_results()` error and rely
+    # on `on.exit()` condition to return preliminary results
+    if (is_cataclysmic(unsummarized)) {
+      return()
+    }
+
+    # Get the averaged resampling stats before stripping attributes
     mean_stats <- estimate_tune_results(unsummarized)
+
+    # Strip off `tune_results` class and drop all attributes since
+    # we add on an `iteration_results` class later.
+    unsummarized <- new_bare_tibble(unsummarized)
 
     check_time(start_time, control$time_limit)
 
@@ -307,7 +320,10 @@ tune_bayes_workflow <-
 
     for (i in (1:iter) + score_card$overall_iter) {
       .notes <-
-        tibble::tibble(location = character(0), type = character(0), note = character(0))
+        tibble::new_tibble(
+          list(location = character(0), type = character(0), note = character(0)),
+          nrow = 0
+        )
 
       log_best(control, i, score_card)
 
@@ -422,14 +438,19 @@ tune_bayes_workflow <-
     # Reset `on.exit()` hook
     on.exit()
 
-    new_iteration_results(
-      x = unsummarized,
-      parameters = param_info,
-      metrics = metrics,
-      outcomes = outcomes,
-      rset_info = rset_info,
-      workflow = workflow_output
-    )
+    res <-
+      new_iteration_results(
+        x = unsummarized,
+        parameters = param_info,
+        metrics = metrics,
+        outcomes = outcomes,
+        rset_info = rset_info,
+        workflow = workflow_output
+      )
+
+    .stash_last_result(res)
+    res
+    }) # end of evalq() call
   }
 
 create_initial_set <- function(param, n = NULL, checks) {

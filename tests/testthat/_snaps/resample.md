@@ -3,8 +3,14 @@
     Code
       result <- fit_resamples(lin_mod, rec, folds, control = control)
     Message
-      x Fold1: preprocessor 1/1: Error in if (!is.null(args$df) && is.null(args$knots) && args$df - degre...
-      x Fold2: preprocessor 1/1: Error in if (!is.null(args$df) && is.null(args$knots) && args$df - degre...
+      x Fold1: preprocessor 1/1:
+        Error in `step_ns()`:
+        Caused by error in `if (...) NULL`:
+        ! missing value where TRUE/FALSE needed
+      x Fold2: preprocessor 1/1:
+        Error in `step_ns()`:
+        Caused by error in `if (...) NULL`:
+        ! missing value where TRUE/FALSE needed
     Condition
       Warning:
       All models failed. Run `show_notes(.Last.tune.result)` for more information.
@@ -15,11 +21,11 @@
       result <- fit_resamples(workflow, folds, control = control)
     Message
       x Fold1: preprocessor 1/1:
-        Error in `chr_as_locations()`:
+        Error in `fit()`:
         ! Can't subset columns that don't exist.
         x Column `foobar` doesn't exist.
       x Fold2: preprocessor 1/1:
-        Error in `chr_as_locations()`:
+        Error in `fit()`:
         ! Can't subset columns that don't exist.
         x Column `foobar` doesn't exist.
     Condition
@@ -111,9 +117,9 @@
       fit_resamples(lin_mod, recipes::recipe(mpg ~ ., mtcars[rep(1:32, 3000), ]),
       folds, control = control_resamples(save_workflow = TRUE))
     Message
-      i The workflow being saved contains a recipe, which is 8.07 Mb in
-      i memory. If this was not intentional, please set the control setting
-      i `save_workflow = FALSE`.
+      i The workflow being saved contains a recipe, which is 8.07 Mb in i memory. If
+      this was not intentional, please set the control setting i `save_workflow =
+      FALSE`.
     Output
       # Resampling results
       # 2-fold cross-validation 

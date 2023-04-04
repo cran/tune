@@ -56,14 +56,58 @@
       # Resampling results
       # Manual resampling 
       # A tibble: 1 x 6
-        splits         id               .metrics         .notes   .predic~1 .workflow 
-        <list>         <chr>            <list>           <list>   <list>    <list>    
-      1 <split [24/8]> train/test split <tibble [2 x 4]> <tibble> <tibble>  <workflow>
-      # ... with abbreviated variable name 1: .predictions
+        splits         id               .metrics .notes   .predictions     .workflow 
+        <list>         <chr>            <list>   <list>   <list>           <list>    
+      1 <split [24/8]> train/test split <tibble> <tibble> <tibble [8 x 4]> <workflow>
       
       There were issues with some computations:
       
         - Warning(s) x1: prediction from a rank-deficient fit may be misleading
       
       Run `show_notes(.Last.tune.result)` for more information.
+
+# collecting extracted objects - fit_resamples
+
+    Code
+      collect_extracts(res_fit)
+    Output
+      # A tibble: 5 x 3
+        id         .extracts .config             
+        <chr>      <list>    <chr>               
+      1 Bootstrap1 <lm>      Preprocessor1_Model1
+      2 Bootstrap2 <lm>      Preprocessor1_Model1
+      3 Bootstrap3 <lm>      Preprocessor1_Model1
+      4 Bootstrap4 <lm>      Preprocessor1_Model1
+      5 Bootstrap5 <lm>      Preprocessor1_Model1
+
+---
+
+    Code
+      collect_extracts(res_nothing)
+    Condition
+      Error in `collect_extracts()`:
+      ! The `.extracts` column does not exist.
+      i Please supply a control object (`?tune::control_grid()`) with a non-`NULL` `extract` argument during resample fitting.
+
+---
+
+    Code
+      collect_extracts(res_error)
+    Output
+      # A tibble: 5 x 3
+        id         .extracts      .config             
+        <chr>      <list>         <chr>               
+      1 Bootstrap1 <try-errr [1]> Preprocessor1_Model1
+      2 Bootstrap2 <try-errr [1]> Preprocessor1_Model1
+      3 Bootstrap3 <try-errr [1]> Preprocessor1_Model1
+      4 Bootstrap4 <try-errr [1]> Preprocessor1_Model1
+      5 Bootstrap5 <try-errr [1]> Preprocessor1_Model1
+
+---
+
+    Code
+      collect_extracts("boop")
+    Condition
+      Error in `collect_extracts()`:
+      ! No `collect_extracts()` exists for this type of object.
 
