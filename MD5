@@ -1,13 +1,13 @@
-2e7f409c9777746e1947829367dbadf2 *DESCRIPTION
+5850492e51499072e0a37b24b413ed41 *DESCRIPTION
 2713734426cb76865d2a125fd2719781 *LICENSE
 1138861ff115edb1777eef84422e91a6 *NAMESPACE
-10090945871323bdf9fe8de34884b985 *NEWS.md
+a829dee29cd784f3c342279af6dc60ff *NEWS.md
 9d34d49c1e2188fb2391782b97b85bd1 *R/0_imports.R
 3482a8e184a611fc33d8a10d366406d2 *R/acquisition.R
 c1dfeae71ddde5b406b97a0325a853c8 *R/augment.R
 e96a6195515183fdfa006440ef7a6488 *R/case_weights.R
 0ec5f6bf6bd87ec78937cbfabc59dc47 *R/checks.R
-bcffa1e2abc5b1a0e646074231d1ba77 *R/collect.R
+04dcd5fcf03e8d39fcb7d15dd2afc822 *R/collect.R
 e2251bea14eb35a183511fb78d31f8ac *R/compat-dplyr.R
 d8ae10cd8ada27a1fd70ad29f814f384 *R/compat-vctrs-helpers.R
 6a557b83dde3c498338838f7d2bffa0e *R/compat-vctrs.R
@@ -138,7 +138,7 @@ dc792209251da426bd3721d2faa58fdf *tests/testthat/test-autoplot.R
 c894248be2b62ce93bcb6737a6d2af7a *tests/testthat/test-bayes.R
 0b8925ab1b5b6087f3999b6b78cc5239 *tests/testthat/test-case-weights.R
 8667bb78c6cd366e4ed86839d5472eba *tests/testthat/test-checks.R
-fdca5ebc92e318e2891e43985f3a8507 *tests/testthat/test-collect.R
+2a68f905e6361136e4707d6531fc973e *tests/testthat/test-collect.R
 dfd82a3aee435c0ab4eab29fcaeb1a87 *tests/testthat/test-compat-dplyr.R
 447d985d4bc4aeace0e98348f4e4f903 *tests/testthat/test-compat-vctrs-helpers.R
 f4a6d15d164cd2ede1a543d79cf4cb70 *tests/testthat/test-compat-vctrs.R
