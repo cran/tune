@@ -1,6 +1,6 @@
 Package: tune
 Title: Tidy Tuning Tools
-Version: 1.1.1
+Version: 1.1.2
 Authors@R: c(
     person("Max", "Kuhn", , "max@posit.co", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-2402-136X")),
@@ -19,7 +19,7 @@ Imports: cli (>= 3.3.0), dials (>= 1.0.0), dplyr (>= 1.0.8), foreach,
         generics (>= 0.1.2), ggplot2, glue (>= 1.6.2), GPfit, hardhat
         (>= 1.2.0), lifecycle (>= 1.0.0), parsnip (>= 1.0.2), purrr (>=
         1.0.0), recipes (>= 1.0.4), rlang (>= 1.0.2), rsample (>=
-        1.0.0), tibble (>= 3.1.0), tidyr (>= 1.2.0), tidyselect (>=
+        1.2.0), tibble (>= 3.1.0), tidyr (>= 1.2.0), tidyselect (>=
         1.1.2), vctrs (>= 0.6.1), withr, workflows (>= 1.0.0),
         yardstick (>= 1.0.0)
 Suggests: C50, covr, kernlab, kknn, knitr, modeldata, spelling,
@@ -32,9 +32,9 @@ Language: en-US
 LazyData: true
 RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2023-04-11 15:55:36 UTC; max
+Packaged: 2023-08-23 23:06:22 UTC; max
 Author: Max Kuhn [aut, cre] (<https://orcid.org/0000-0003-2402-136X>),
   Posit Software, PBC [cph, fnd]
 Maintainer: Max Kuhn <max@posit.co>
 Repository: CRAN
-Date/Publication: 2023-04-11 16:40:02 UTC
+Date/Publication: 2023-08-23 23:40:02 UTC
