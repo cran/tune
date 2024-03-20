@@ -179,6 +179,23 @@ test_that("workflow objects", {
   })
 })
 
+test_that("errors informatively when needed package isn't installed", {
+  # rstanarm is not installed during CI runs
+  # in contexts where it _is_ installed, skip the test.
+  skip_if(rlang::is_installed("rstanarm"))
+  stan_wflow <- workflow(mpg ~ ., parsnip::linear_reg(engine = "stan"))
+
+  expect_snapshot(
+    check_workflow(stan_wflow),
+    error = TRUE
+  )
+
+  expect_snapshot(
+    fit_resamples(stan_wflow, rsample::bootstraps(mtcars)),
+    error = TRUE
+  )
+})
+
 test_that("workflow objects (will not tune, tidymodels/tune#548)", {
   skip_if_not_installed("glmnet")
 
@@ -194,9 +211,9 @@ test_that("workflow objects (will not tune, tidymodels/tune#548)", {
   lr_lm_2 <- parsnip::linear_reg(penalty = tune(), mixture = tune())
 
   # well-defined:
-  lr_glmnet_0 <- lr_lm_0 %>% set_engine("glmnet")
-  lr_glmnet_1 <- lr_lm_1 %>% set_engine("glmnet")
-  lr_glmnet_2 <- lr_lm_2 %>% set_engine("glmnet")
+  lr_glmnet_0 <- lr_lm_0 %>% parsnip::set_engine("glmnet")
+  lr_glmnet_1 <- lr_lm_1 %>% parsnip::set_engine("glmnet")
+  lr_glmnet_2 <- lr_lm_2 %>% parsnip::set_engine("glmnet")
 
   # don't error when supplied tune args make sense given engine / steps
   expect_error_na <- function(x) {testthat::expect_error(x, regexp = NA)}
@@ -356,11 +373,12 @@ test_that("initial values", {
 
   grid_1 <- tune:::check_initial(
     2,
-    extract_parameter_set_dials(wflow_1),
-    wflow_1,
-    mtfolds,
-    yardstick::metric_set(yardstick::rsq),
-    control_bayes()
+    pset = extract_parameter_set_dials(wflow_1),
+    wflow = wflow_1,
+    resamples = mtfolds,
+    metrics = yardstick::metric_set(yardstick::rsq),
+    eval_time = NULL,
+    ctrl = control_bayes()
   )
   expect_true(is.data.frame(grid_1))
   expect_equal(nrow(grid_1), nrow(mtfolds))
@@ -369,11 +387,11 @@ test_that("initial values", {
   expect_snapshot(error = TRUE, {
     tune:::check_initial(
       data.frame(),
-      extract_parameter_set_dials(wflow_1),
-      wflow_1,
-      mtfolds,
-      yardstick::metric_set(yardstick::rsq),
-      control_bayes()
+      pset = extract_parameter_set_dials(wflow_1),
+      wflow = wflow_1,
+      resamples = mtfolds,
+      metrics = yardstick::metric_set(yardstick::rsq),
+      ctrl = control_bayes()
     )
   })
 })

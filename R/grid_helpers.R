@@ -1,4 +1,7 @@
-predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metrics_info) {
+
+predict_model <- function(split, workflow, grid, metrics, submodels = NULL,
+                          metrics_info, eval_time = NULL) {
+
   model <- extract_fit_parsnip(workflow)
 
   new_data <- rsample::assessment(split)
@@ -6,6 +9,12 @@ predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metr
   forged <- forge_from_workflow(new_data, workflow)
   x_vals <- forged$predictors
   y_vals <- forged$outcomes
+
+  # TODO patch since parsnip does not record the column names when Surv objects
+  # are used with fit_xy()
+  if (model$spec$mode == "censored regression") {
+    model$preproc$y_var <- names(y_vals)
+  }
 
   orig_rows <- as.integer(split, data = "assessment")
 
@@ -39,9 +48,11 @@ predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metr
 
   for (type_iter in types) {
     # Regular predictions
-    tmp_res <- predict(model, x_vals, type = type_iter)
+
+    tmp_res <- predict_wrapper(model, x_vals, type_iter, eval_time)
     tmp_res$.row <- orig_rows
     tmp_res <- vctrs::vec_cbind(tmp_res, grid)
+
 
     if (!is.null(submodels)) {
       submod_length <- lengths(submodels)
@@ -49,17 +60,9 @@ predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metr
 
       if (has_submodels) {
         submod_param <- names(submodels)
-        mp_call <-
-          call2(
-            "multi_predict",
-            .ns = "parsnip",
-            object = expr(model),
-            new_data = expr(x_vals),
-            type = type_iter,
-            !!!make_submod_arg(grid, model, submodels)
-          )
+        subgrid <- make_submod_arg(grid, model, submodels)
 
-        tmp_sub <- eval_tidy(mp_call)
+        tmp_sub <- predict_wrapper(model, x_vals, type_iter, eval_time, subgrid)
         tmp_sub$.row <- orig_rows
         tmp_sub <- unnest(tmp_sub, cols = dplyr::starts_with(".pred"))
 
@@ -88,6 +91,13 @@ predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metr
   y_vals$.row <- orig_rows
   res <- dplyr::full_join(res, y_vals, by = ".row")
 
+  # Add implicitly grouped metric data, if applicable
+  metrics_by <- get_metrics_by(metrics)
+  if (has_metrics_by(metrics_by)) {
+    new_data$.row <- orig_rows
+    res <- dplyr::full_join(res, new_data[c(metrics_by, ".row")], by = ".row")
+  }
+
   # Add case weights (if needed)
   if (has_case_weights(workflow)) {
     case_weights <- extract_case_weights(new_data, workflow)
@@ -100,12 +110,76 @@ predict_model <- function(split, workflow, grid, metrics, submodels = NULL, metr
     }
   }
 
+
+  res <- maybe_add_ipcw(res, model, types)
+
   if (!tibble::is_tibble(res)) {
     res <- tibble::as_tibble(res)
   }
+  res
+}
+
+trim_ipcw <- function(x) {
+  x$.weight_time <- NULL
+  x$.pred_censored <- NULL
+  x
+}
+
+maybe_add_ipcw <- function(.data, model, types) {
+  if (!any(types == "survival")) {
+    return(.data)
+  }
+  res <- parsnip::.censoring_weights_graf(model, .data)
+  res$.pred <- purrr::map(res$.pred, trim_ipcw)
+  res
+}
+
+#' Get time for analysis of dynamic survival metrics
+#' @param metrics A metric set.
+#' @param eval_time A vector of evaluation times.
+#' @export
+#' @keywords internal
+get_metric_time <- function(metrics, eval_time) {
+  info <- tibble::as_tibble(metrics)
+  if (any(info$class == "dynamic_survival_metric")) {
+    eval_time <- eval_time[1]
+  } else {
+    eval_time <- NULL
+  }
+  eval_time
+}
+
+predict_wrapper <- function(model, new_data, type, eval_time, subgrid = NULL) {
+  if (is.null(subgrid)) {
+    fn <- "predict.model_fit"
+  } else {
+    fn <- "multi_predict"
+  }
+
+  cl <-
+    rlang::call2(
+      fn,
+      .ns = "parsnip",
+      object = rlang::expr(model),
+      new_data = rlang::expr(new_data),
+      type = type)
+
+  # Add in censored regression evaluation times (if needed)
+  has_type <- type %in% c("survival", "hazard")
+  if (model$spec$mode == "censored regression" & !is.null(eval_time) & has_type) {
+    cl <- rlang::call_modify(cl, eval_time = eval_time)
+  }
+
+  # When there are sub-models:
+  if (!is.null(subgrid)) {
+    cl <- rlang::call_modify(cl, !!!subgrid)
+  }
+  res <- rlang::eval_tidy(cl)
 
   res
 }
+
+# ------------------------------------------------------------------------------
 
 #' @export
 #' @rdname tune-internal-functions
@@ -136,6 +210,18 @@ make_rename_arg <- function(grid, model, submodels) {
   res <- list(real_name)
   names(res) <- names(submodels)
   res
+}
+
+get_metrics_by <- function(metric_set) {
+  metrics <- attr(metric_set, "metrics")
+  metrics_by <- purrr::map(metrics, attr, "by")
+  unique(unlist(metrics_by, use.names = FALSE))
+}
+
+# metrics_by is the output of `get_metrics_by()`---it's assumed that wherever
+# `has_metrics_by()` is needed, `get_metrics_by()` output will be needed too.
+has_metrics_by <- function(metrics_by) {
+  length(metrics_by) > 0
 }
 
 # ------------------------------------------------------------------------------

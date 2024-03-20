@@ -12,11 +12,12 @@ fit_best(x, ...)
 
 \method{fit_best}{tune_results}(
   x,
+  ...,
   metric = NULL,
+  eval_time = NULL,
   parameters = NULL,
   verbose = FALSE,
-  add_validation_set = NULL,
-  ...
+  add_validation_set = NULL
 )
 }
 \arguments{
@@ -24,16 +25,23 @@ fit_best(x, ...)
 \code{\link[=tune_grid]{tune_grid()}}, \code{\link[=tune_bayes]{tune_bayes()}}, etc). The control option
 \code{\link[=control_grid]{save_workflow = TRUE}} should have been used.}
 
-\item{...}{Not currently used.}
+\item{...}{Not currently used, must be empty.}
 
 \item{metric}{A character string (or \code{NULL}) for which metric to optimize. If
 \code{NULL}, the first metric is used.}
+
+\item{eval_time}{A single numeric time point where dynamic event time
+metrics should be chosen (e.g., the time-dependent ROC curve, etc). The
+values should be consistent with the values used to create \code{x}. The \code{NULL}
+default will automatically use the first evaluation time used by \code{x}.}
 
 \item{parameters}{An optional 1-row tibble of tuning parameter settings, with
 a column for each tuning parameter. This tibble should have columns for each
 tuning parameter identifier (e.g. \code{"my_param"} if \code{tune("my_param")} was used).
 If \code{NULL}, this argument will be set to
-\code{\link[=select_best.tune_results]{select_best(metric)}}.}
+\code{\link[=select_best.tune_results]{select_best(metric, eval_time)}}.
+If not \code{NULL}, \code{parameters} overwrites the specification via \code{metric}, and
+\code{eval_time}.}
 
 \item{verbose}{A logical for printing logging.}
 
@@ -59,11 +67,47 @@ This function is a shortcut for the manual steps of:
   wflow <- finalize_workflow(wflow, best_param)  # or just `finalize_model()`
   wflow_fit <- fit(wflow, data_set)
 }
-
-In comparison to \code{\link[=last_fit]{last_fit()}}, that function requires a finalized model, fits
-the model on the training set defined by \code{\link[rsample:initial_split]{rsample::initial_split()}}, and
-computes metrics from the test set.
 }
+\section{Case Weights}{
+
+Some models can utilize case weights during training. tidymodels currently
+supports two types of case weights: importance weights (doubles) and
+frequency weights (integers). Frequency weights are used during model
+fitting and evaluation, whereas importance weights are only used during
+fitting.
+
+To know if your model is capable of using case weights, create a model spec
+and test it using \code{\link[parsnip:case_weights_allowed]{parsnip::case_weights_allowed()}}.
+
+To use them, you will need a numeric column in your data set that has been
+passed through either \code{\link[hardhat:importance_weights]{hardhat:: importance_weights()}} or
+\code{\link[hardhat:frequency_weights]{hardhat::frequency_weights()}}.
+
+For functions such as \code{\link[=fit_resamples]{fit_resamples()}} and the \verb{tune_*()} functions, the
+model must be contained inside of a \code{\link[workflows:workflow]{workflows::workflow()}}. To declare that
+case weights are used, invoke \code{\link[workflows:add_case_weights]{workflows::add_case_weights()}} with the
+corresponding (unquoted) column name.
+
+From there, the packages will appropriately handle the weights during model
+fitting and (if appropriate) performance estimation.
+}
+
+\section{See also}{
+
+
+\code{\link[=last_fit]{last_fit()}} is closely related to \code{\link[=fit_best]{fit_best()}}. They both
+give you access to a workflow fitted on the training data but are situated
+somewhat differently in the modeling workflow. \code{\link[=fit_best]{fit_best()}} picks up
+after a tuning function like \code{\link[=tune_grid]{tune_grid()}} to take you from tuning results
+to fitted workflow, ready for you to predict and assess further. \code{\link[=last_fit]{last_fit()}}
+assumes you have made your choice of hyperparameters and finalized your
+workflow to then take you from finalized workflow to fitted workflow and
+further to performance assessment on the test data. While \code{\link[=fit_best]{fit_best()}} gives
+a fitted workflow, \code{\link[=last_fit]{last_fit()}} gives you the performance results. If you
+want the fitted workflow, you can extract it from the result of \code{\link[=last_fit]{last_fit()}}
+via \link[=extract_workflow.tune_results]{extract_workflow()}.
+}
+
 \examples{
 \dontshow{if (tune:::should_run_examples()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)

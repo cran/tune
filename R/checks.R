@@ -33,7 +33,7 @@ check_backend_options <- function(backend_options) {
 
 grid_msg <- "`grid` should be a positive integer or a data frame."
 
-check_grid <- function(grid, workflow, pset = NULL) {
+check_grid <- function(grid, workflow, pset = NULL, call = caller_env()) {
   # `NULL` grid is the signal that we are using `fit_resamples()`
   if (is.null(grid)) {
     return(grid)
@@ -111,7 +111,7 @@ check_grid <- function(grid, workflow, pset = NULL) {
     if (grid < 1) {
       rlang::abort(grid_msg)
     }
-    check_workflow(workflow, pset = pset, check_dials = TRUE)
+    check_workflow(workflow, pset = pset, check_dials = TRUE, call = call)
 
     grid <- dials::grid_latin_hypercube(pset, size = grid)
     grid <- dplyr::distinct(grid)
@@ -157,9 +157,10 @@ check_parameters <- function(wflow, pset = NULL, data, grid_names = character(0)
     if (tune_recipe) {
       rlang::abort(
         paste(
-          "Some tuning parameters require finalization but there are recipe",
-          "parameters that require tuning. Please use `parameters()` to",
-          "finalize the parameter ranges."
+          "Some model parameters require finalization but there are recipe",
+          "parameters that require tuning. Please use ",
+          "`extract_parameter_set_dials()` to set parameter ranges ",
+          "manually and supply the output to the `param_info` argument."
         )
       )
     }
@@ -188,7 +189,7 @@ is_installed <- function(pkg) {
   res
 }
 
-check_installs <- function(x) {
+check_installs <- function(x, call = caller_env()) {
   if (x$engine == "unknown") {
     rlang::abort("Please declare an engine for the model")
   } else {
@@ -201,9 +202,12 @@ check_installs <- function(x) {
   if (length(deps) > 0) {
     is_inst <- purrr::map_lgl(deps, is_installed)
     if (any(!is_inst)) {
-      rlang::abort(c("Some package installs are required: ",
-                     paste0("'", deps[!is_inst], "'", collapse = ", ")
-      ))
+      needs_installed <- unique(deps[!is_inst])
+      cli::cli_abort(
+        "{cli::qty(needs_installed)} Package install{?s} {?is/are} \\
+         required for {.pkg {needs_installed}}.",
+        call = call
+      )
     }
   }
 }
@@ -271,7 +275,7 @@ check_param_objects <- function(pset) {
 #' @keywords internal
 #' @rdname empty_ellipses
 #' @param check_dials A logical for check for a NULL parameter object.
-check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
+check_workflow <- function(x, ..., pset = NULL, check_dials = FALSE, call = caller_env()) {
   if (!inherits(x, "workflow")) {
     rlang::abort("The `object` argument should be a 'workflow' object.")
   }
@@ -283,6 +287,8 @@ check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
   if (!has_spec(x)) {
     rlang::abort("A parsnip model is required.")
   }
+
+  rlang::check_dots_empty(call = call)
 
   if (check_dials) {
     if (is.null(pset)) {
@@ -303,7 +309,7 @@ check_workflow <- function(x, pset = NULL, check_dials = FALSE) {
 
   check_extra_tune_parameters(x)
 
-  check_installs(hardhat::extract_spec_parsnip(x))
+  check_installs(hardhat::extract_spec_parsnip(x), call = call)
 
   invisible(NULL)
 }
@@ -344,7 +350,10 @@ check_metrics <- function(x, object) {
              x <- yardstick::metric_set(rmse, rsq)
            },
            classification = {
-             x <- yardstick::metric_set(roc_auc, accuracy)
+             x <- yardstick::metric_set(roc_auc, accuracy, brier_class)
+           },
+           'censored regression' = {
+             x <- yardstick::metric_set(brier_survival)
            },
            unknown = {
              rlang::abort("Internal error: `check_installs()` should have caught an `unknown` mode.")
@@ -357,27 +366,35 @@ check_metrics <- function(x, object) {
 
   is_numeric_metric_set <- inherits(x, "numeric_metric_set")
   is_class_prob_metric_set <- inherits(x, "class_prob_metric_set")
+  is_surv_metric_set <- inherits(x, c("survival_metric_set"))
 
-  if (!is_numeric_metric_set && !is_class_prob_metric_set) {
+  if (!is_numeric_metric_set && !is_class_prob_metric_set && !is_surv_metric_set) {
     rlang::abort("The `metrics` argument should be the results of [yardstick::metric_set()].")
   }
 
-  if (mode == "regression" && is_class_prob_metric_set) {
+  if (mode == "regression" && !is_numeric_metric_set) {
     msg <- paste0(
       "The parsnip model has `mode = 'regression'`, ",
-      "but `metrics` is a metric set for class / probability metrics."
+      "but `metrics` is a metric set for a different model mode."
     )
     rlang::abort(msg)
   }
 
-  if (mode == "classification" && is_numeric_metric_set) {
+  if (mode == "classification" && !is_class_prob_metric_set) {
     msg <- paste0(
       "The parsnip model has `mode = 'classification'`, ",
-      "but `metrics` is a metric set for regression metrics."
+      "but `metrics` is a metric set for a different model mode."
     )
     rlang::abort(msg)
   }
 
+  if (mode == "censored regression" && !is_surv_metric_set) {
+    msg <- paste0(
+      "The parsnip model has `mode = 'censored regression'`, ",
+      "but `metrics` is a metric set for a different model mode."
+    )
+    rlang::abort(msg)
+  }
   x
 }
 
@@ -389,7 +406,14 @@ bayes_msg <- "`initial` should be a positive integer or the results of [tune_gri
 #' @param wflow A `workflow` object.
 #' @param resamples An `rset` object.
 #' @param ctrl A `control_grid` object.
-check_initial <- function(x, pset, wflow, resamples, metrics, ctrl, checks = "grid") {
+check_initial <- function(x, 
+                          pset, 
+                          wflow, 
+                          resamples,
+                          metrics, 
+                          eval_time,
+                          ctrl,
+                          checks = "grid") {
   if (is.null(x)) {
     rlang::abort(bayes_msg)
   }
@@ -401,17 +425,16 @@ check_initial <- function(x, pset, wflow, resamples, metrics, ctrl, checks = "gr
       tune_log(ctrl, split = NULL, msg, type = "go")
     }
 
+    grid_ctrl <- ctrl
+    grid_ctrl$verbose <- FALSE
     x <- tune_grid(
       wflow,
       resamples = resamples,
       grid = x,
       metrics = metrics,
+      eval_time = eval_time,
       param_info = pset,
-      control = control_grid(
-        extract = ctrl$extract,
-        save_pred = ctrl$save_pred,
-        event_level = ctrl$event_level
-      )
+      control = parsnip::condense_control(grid_ctrl, control_grid())
     )
 
     if (ctrl$verbose) {
@@ -598,3 +621,23 @@ check_no_tuning <- function(x) {
   rlang::abort(msg, call = NULL)
 }
 
+dyn_inputs <- c("integrated_survival_metric", "dynamic_survival_metric")
+
+check_eval_time <- function(eval_time, metrics) {
+  metric_types <- tibble::as_tibble(metrics)$class
+  needs_eval_time <- any(metric_types %in% dyn_inputs)
+  if (!is.null(eval_time) & !needs_eval_time) {
+    cli::cli_abort(
+      "{.arg eval_time} is only used for dynamic and integrated survival metrics.",
+      call = NULL
+    )
+  }
+  if (is.null(eval_time) & needs_eval_time) {
+    rlang::abort(
+      "One or more metric requires the specification of time points in the `eval_time` argument.",
+      call = NULL
+    )
+  }
+  invisible(NULL)
+
+}

@@ -16,6 +16,7 @@ tune_grid(object, ...)
   param_info = NULL,
   grid = 10,
   metrics = NULL,
+  eval_time = NULL,
   control = control_grid()
 )
 
@@ -26,18 +27,23 @@ tune_grid(object, ...)
   param_info = NULL,
   grid = 10,
   metrics = NULL,
+  eval_time = NULL,
   control = control_grid()
 )
 }
 \arguments{
-\item{object}{A \code{parsnip} model specification or a \code{\link[workflows:workflow]{workflows::workflow()}}.}
+\item{object}{A \code{parsnip} model specification or an unfitted
+\link[workflows:workflow]{workflow()}. No tuning parameters are allowed; if arguments
+have been marked with \link[hardhat:tune]{tune()}, their values must be
+\link[=finalize_model]{finalized}.}
 
 \item{...}{Not currently used.}
 
 \item{preprocessor}{A traditional model formula or a recipe created using
 \code{\link[recipes:recipe]{recipes::recipe()}}.}
 
-\item{resamples}{An \code{rset()} object.}
+\item{resamples}{An \code{rset} resampling object created from an \code{rsample}
+function, such as \code{\link[rsample:vfold_cv]{rsample::vfold_cv()}}.}
 
 \item{param_info}{A \code{\link[dials:parameters]{dials::parameters()}} object or \code{NULL}. If none is given,
 a parameters set is derived from other arguments. Passing this argument can
@@ -48,9 +54,16 @@ data frame should have columns for each parameter being tuned and rows for
 tuning parameter candidates. An integer denotes the number of candidate
 parameter sets to be created automatically.}
 
-\item{metrics}{A \code{\link[yardstick:metric_set]{yardstick::metric_set()}} or \code{NULL}.}
+\item{metrics}{A \code{\link[yardstick:metric_set]{yardstick::metric_set()}}, or \code{NULL} to compute a standard
+set of metrics.}
 
-\item{control}{An object used to modify the tuning process.}
+\item{eval_time}{A numeric vector of time points where dynamic event time
+metrics should be computed (e.g. the time-dependent ROC curve, etc). The
+values must be non-negative and should probably be no greater than the
+largest event time in the training set (See Details below).}
+
+\item{control}{An object used to modify the tuning process, likely created
+by \code{\link[=control_grid]{control_grid()}}.}
 }
 \value{
 An updated version of \code{resamples} with extra list columns for \code{.metrics} and
@@ -82,9 +95,9 @@ would be to re-train the same recipe multiple times for each model
 tuning parameter.
 }
 
-The \code{foreach} package is used here. To execute the resampling iterations in
-parallel, register a parallel backend function. See the documentation for
-\code{\link[foreach:foreach]{foreach::foreach()}} for examples.
+tune supports parallel processing with the \pkg{future} package. To execute
+the resampling iterations in parallel, specify a \link[future:plan]{plan} with
+future first. The \code{allow_par} argument can be used to avoid parallelism.
 
 For the most part, warnings generated during training are shown as they occur
 and are associated with a specific resample when
@@ -202,6 +215,64 @@ every model that is \emph{fit} (as opposed to every model that is \emph{evaluate
 As noted above, in some cases, model predictions can be derived for
 sub-models so that, in these cases, not every row in the tuning parameter
 grid has a separate R object associated with it.
+}
+
+\section{Case Weights}{
+
+Some models can utilize case weights during training. tidymodels currently
+supports two types of case weights: importance weights (doubles) and
+frequency weights (integers). Frequency weights are used during model
+fitting and evaluation, whereas importance weights are only used during
+fitting.
+
+To know if your model is capable of using case weights, create a model spec
+and test it using \code{\link[parsnip:case_weights_allowed]{parsnip::case_weights_allowed()}}.
+
+To use them, you will need a numeric column in your data set that has been
+passed through either \code{\link[hardhat:importance_weights]{hardhat:: importance_weights()}} or
+\code{\link[hardhat:frequency_weights]{hardhat::frequency_weights()}}.
+
+For functions such as \code{\link[=fit_resamples]{fit_resamples()}} and the \verb{tune_*()} functions, the
+model must be contained inside of a \code{\link[workflows:workflow]{workflows::workflow()}}. To declare that
+case weights are used, invoke \code{\link[workflows:add_case_weights]{workflows::add_case_weights()}} with the
+corresponding (unquoted) column name.
+
+From there, the packages will appropriately handle the weights during model
+fitting and (if appropriate) performance estimation.
+}
+
+\section{Censored Regression Models}{
+
+
+Three types of metrics can be used to assess the quality of censored
+regression models:
+\itemize{
+\item static: the prediction is independent of time.
+\item dynamic: the prediction is a time-specific probability (e.g., survival
+probability) and is measured at one or more particular times.
+\item integrated: same as the dynamic metric but returns the integral of the
+different metrics from each time point.
+}
+
+Which metrics are chosen by the user affects how many evaluation times
+should be specified. For example:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{# Needs no `eval_time` value
+metric_set(concordance_survival)
+
+# Needs at least one `eval_time`
+metric_set(brier_survival)
+metric_set(brier_survival, concordance_survival)
+
+# Needs at least two eval_time` values
+metric_set(brier_survival_integrated, concordance_survival)
+metric_set(brier_survival_integrated, concordance_survival)
+metric_set(brier_survival_integrated, concordance_survival, brier_survival)
+}\if{html}{\out{</div>}}
+
+Values of \code{eval_time} should be less than the largest observed event
+time in the training data. For many non-parametric models, the results beyond
+the largest time corresponding to an event are constant (or \code{NA}).
 }
 
 \examples{

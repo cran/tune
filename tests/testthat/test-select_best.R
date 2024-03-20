@@ -1,47 +1,5 @@
 # ------------------------------------------------------------------------------
-# library(tidymodels)
-# set.seed(7898)
-# data_folds <- vfold_cv(mtcars, repeats = 2)
-#
-# base_rec <-
-#   recipe(mpg ~ ., data = mtcars) %>%
-#   step_normalize(all_predictors())
-#
-# disp_rec <-
-#   base_rec %>%
-#   step_bs(disp, degree = tune(), deg_free = tune()) %>%
-#   step_bs(wt, degree = tune("wt degree"), deg_free = tune("wt df"))
-#
-# lm_model <-
-#   linear_reg(mode = "regression") %>%
-#   set_engine("lm")
-#
-# cars_wflow <-
-#   workflow() %>%
-#   add_recipe(disp_rec) %>%
-#   add_model(lm_model)
-#
-# cars_set <-
-#   cars_wflow %>%
-#   parameters %>%
-#   update(degree = degree_int(1:2)) %>%
-#   update(deg_free = deg_free(c(2, 10))) %>%
-#   update(`wt degree` = degree_int(1:2)) %>%
-#   update(`wt df` = deg_free(c(2, 10)))
-#
-# set.seed(255)
-# cars_grid <-
-#   cars_set %>%
-#   grid_regular(levels = c(3, 2, 3, 2))
-#
-#
-# cars_res <- tune_grid(cars_wflow,
-#                       resamples = data_folds,
-#                       grid = cars_grid,
-#                       control = control_grid(verbose = TRUE, save_pred = TRUE))
-# saveRDS(cars_res,
-#         file = testthat::test_path("data", "rcv_results.rds"),
-#         version = 2, compress = "xz")
+# objects for these tests are created using inst/test_objects.R
 
 # ------------------------------------------------------------------------------
 
@@ -72,16 +30,13 @@ test_that("select_best()", {
     select_best(rcv_results, metric = "rsq") %>% select(-.config),
     best_rsq
   )
-  expect_snapshot(
-    select_best(rcv_results, metric = "rsq", maximize = TRUE)
-  )
 
   expect_snapshot(error = TRUE, {
     select_best(rcv_results, metric = "random")
   })
-  expect_snapshot(error = TRUE, {
+  expect_snapshot(
     select_best(rcv_results, metric = c("rmse", "rsq"))
-  })
+  )
   expect_snapshot({
     best_default_metric <- select_best(rcv_results)
     best_rmse <- select_best(rcv_results, metric = "rmse")
@@ -137,24 +92,20 @@ test_that("one-std error rule", {
   )
 
   expect_equal(
-    select_by_one_std_err(rcv_results, metric = "rmse", deg_free, `wt degree`)$mean,
-    2.94252798698909
+    select_by_one_std_err(rcv_results, metric = "rmse", deg_free, `wt degree`)$.config,
+    "Preprocessor05_Model1"
   )
   expect_equal(
     select_by_one_std_err(knn_results, metric = "accuracy", K)$K,
     25L
   )
 
-  expect_snapshot(
-    select_by_one_std_err(knn_results, metric = "accuracy", K, maximize = TRUE)
-  )
-
   expect_snapshot(error = TRUE, {
     select_by_one_std_err(rcv_results, metric = "random", deg_free)
   })
-  expect_snapshot(error = TRUE, {
+  expect_snapshot(
     select_by_one_std_err(rcv_results, metric = c("rmse", "rsq"), deg_free)
-  })
+  )
   expect_snapshot({
     select_via_default_metric <- select_by_one_std_err(knn_results, K)
     select_via_roc <- select_by_one_std_err(knn_results, K, metric = "roc_auc")
@@ -193,24 +144,20 @@ test_that("percent loss", {
     tibble::is_tibble(select_by_pct_loss(knn_results, metric = "accuracy", K))
   )
   expect_equal(
-    select_by_pct_loss(rcv_results, metric = "rmse", deg_free, `wt degree`)$mean,
-    2.94252798698909
+    select_by_pct_loss(rcv_results, metric = "rmse", deg_free, `wt degree`)$.config,
+    "Preprocessor05_Model1"
   )
   expect_equal(
     select_by_pct_loss(knn_results, metric = "accuracy", K)$K,
     12L
   )
 
-  expect_snapshot(
-    select_by_pct_loss(knn_results, metric = "accuracy", K, maximize = TRUE)
-  )
-
   expect_snapshot(error = TRUE, {
     select_by_pct_loss(rcv_results, metric = "random", deg_free)
   })
-  expect_snapshot(error = TRUE, {
+  expect_snapshot(
     select_by_pct_loss(rcv_results, metric = c("rmse", "rsq"), deg_free)
-  })
+  )
   expect_snapshot({
     select_via_default_metric <- select_by_pct_loss(knn_results, K)
     select_via_roc <- select_by_pct_loss(knn_results, K, metric = "roc_auc")
@@ -248,12 +195,12 @@ test_that("select_by_* can handle metrics with direction == 'zero'", {
   skip_on_cran()
 
   set.seed(1)
-  resamples <- bootstraps(mtcars, times = 5)
+  resamples <- rsample::bootstraps(mtcars, times = 5)
 
   set.seed(1)
   tune_res <-
     tune::tune_grid(
-      nearest_neighbor(mode = "regression", neighbors = tune()),
+      parsnip::nearest_neighbor(mode = "regression", neighbors = tune()),
       mpg ~ .,
       resamples,
       metrics = yardstick::metric_set(yardstick::mpe, yardstick::msd)
@@ -358,7 +305,7 @@ test_that("select_by_* can handle metrics with direction == 'zero'", {
     select_by_pct_loss(tune_res, metric = "msd", limit = 10, desc(neighbors))$.config,
     tune_res_metrics %>%
       filter(.metric == "msd") %>%
-      rowwise() %>%
+      dplyr::rowwise() %>%
       mutate(loss = abs((abs(mean) - abs(best$mean)) / best$mean) * 100) %>%
       ungroup() %>%
       arrange(desc(neighbors)) %>%
@@ -380,7 +327,7 @@ test_that("select_by_* can handle metrics with direction == 'zero'", {
     select_by_pct_loss(tune_res, metric = "mpe", limit = 10, desc(neighbors))$.config,
     tune_res_metrics %>%
       filter(.metric == "mpe") %>%
-      rowwise() %>%
+      dplyr::rowwise() %>%
       mutate(loss = abs((abs(mean) - abs(best$mean)) / best$mean) * 100) %>%
       ungroup() %>%
       arrange(desc(neighbors)) %>%
@@ -391,3 +338,184 @@ test_that("select_by_* can handle metrics with direction == 'zero'", {
       pull()
   )
 })
+
+test_that("show_best with survival models", {
+  surv_res <- readRDS(test_path("data", "surv_boost_tree_res.rds"))
+
+  expect_snapshot(
+    show_best(surv_res)
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "concordance_survival")
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival_integrated")
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival")
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = c("brier_survival", "roc_auc_survival"))
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival", eval_time = 1)
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "concordance_survival", eval_time = 1)
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "concordance_survival", eval_time = 1.1)
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival", eval_time = 1.1),
+    error = TRUE
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival", eval_time = 1:2)
+  )
+  expect_snapshot(
+    show_best(surv_res, metric = "brier_survival", eval_time = 3:4),
+    error = TRUE
+  )
+
+})
+
+test_that("select_best with survival models", {
+  surv_res <- readRDS(test_path("data", "surv_boost_tree_res.rds"))
+
+  expect_snapshot(
+    select_best(surv_res)
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "concordance_survival")
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival_integrated")
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival")
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = c("brier_survival", "roc_auc_survival"))
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival", eval_time = 1)
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "concordance_survival", eval_time = 1)
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "concordance_survival", eval_time = 1.1)
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival", eval_time = 1.1),
+    error = TRUE
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival", eval_time = 1:2)
+  )
+  expect_snapshot(
+    select_best(surv_res, metric = "brier_survival", eval_time = 3:4),
+    error = TRUE
+  )
+
+})
+
+test_that("select_by_one_std_err with survival models", {
+  surv_res <- readRDS(test_path("data", "surv_boost_tree_res.rds"))
+
+  expect_snapshot(
+    select_by_one_std_err(surv_res, trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "concordance_survival", trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival_integrated", trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival", trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = c("brier_survival", "roc_auc_survival"),
+                          trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival",
+                          eval_time = 1, trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "concordance_survival",
+                          eval_time = 1, trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "concordance_survival",
+                          eval_time = 1.1, trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival",
+                          eval_time = 1.1, trees),
+    error = TRUE
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival",
+                          eval_time = 1:2, trees)
+  )
+  expect_snapshot(
+    select_by_one_std_err(surv_res, metric = "brier_survival",
+                          eval_time = 3:4, trees),
+    error = TRUE
+  )
+
+})
+
+test_that("select_by_pct_loss with survival models", {
+  surv_res <- readRDS(test_path("data", "surv_boost_tree_res.rds"))
+
+  expect_snapshot(
+    select_by_pct_loss(surv_res, trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "concordance_survival", trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival_integrated", trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival", trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = c("brier_survival", "roc_auc_survival"),
+                       trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival",
+                       eval_time = 1, trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "concordance_survival",
+                       eval_time = 1, trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "concordance_survival",
+                       eval_time = 1.1, trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival",
+                       eval_time = 1.1, trees),
+    error = TRUE
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival",
+                       eval_time = 1:2, trees)
+  )
+  expect_snapshot(
+    select_by_pct_loss(surv_res, metric = "brier_survival",
+                       eval_time = 3:4, trees),
+    error = TRUE
+  )
+
+})
+
+
+

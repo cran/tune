@@ -88,6 +88,13 @@ catalog_is_active <- function() {
 # initializes machinery for the tune catalog inside of an environment.
 # the `env` should be an execution environment that persists throughout the
 # tuning process for a given tuning approach and exits once tuning is completed.
+#
+# this function attaches an exit handler (see `on.exit()`) to the execution
+# environment of the function it's called within, by default. pay close
+# attention when other exit handlers are attached to the same environment;
+# a call to `on.exit()` in `env` after this function is called will cause
+# issues with the catalog. (see #845.)
+#
 #' @rdname tune-internal-functions
 #' @export
 initialize_catalog <- function(control, env = rlang::caller_env()) {
@@ -254,7 +261,6 @@ siren <- function(x, type = "info") {
   }
   message(paste(symb, msg))
 }
-
 
 tune_log <- function(control, split = NULL, task, type = "success", catalog = TRUE) {
   if (!any(control$verbose, control$verbose_iter)) {
@@ -451,12 +457,17 @@ check_and_log_flow <- function(control, results) {
   invisible(NULL)
 }
 
-log_progress <- function(control, x, maximize = TRUE, objective = NULL, digits = 4) {
+log_progress <- function(control, x, maximize = TRUE, objective = NULL,
+                         eval_time = NULL, digits = 4) {
   if (!isTRUE(control$verbose_iter)) {
     return(invisible(NULL))
   }
 
   x <- dplyr::filter(x, .metric == objective)
+  if (!is.null(eval_time)) {
+    x <- dplyr::filter(x, .eval_time == eval_time)
+  }
+
   if (maximize) {
     bst <- which.max(x$mean)
   } else {

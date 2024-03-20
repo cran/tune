@@ -4,10 +4,8 @@
 #'  for a pre-defined set of tuning parameters that correspond to a model or
 #'  recipe across one or more resamples of the data.
 #'
-#' @param object A `parsnip` model specification or a [workflows::workflow()].
-#' @param preprocessor A traditional model formula or a recipe created using
-#'   [recipes::recipe()].
-#' @param resamples An `rset()` object.
+#' @inheritParams last_fit
+#' @inheritParams fit_resamples
 #' @param param_info A [dials::parameters()] object or `NULL`. If none is given,
 #' a parameters set is derived from other arguments. Passing this argument can
 #' be useful when parameter ranges need to be customized.
@@ -15,8 +13,12 @@
 #'  data frame should have columns for each parameter being tuned and rows for
 #'  tuning parameter candidates. An integer denotes the number of candidate
 #'  parameter sets to be created automatically.
-#' @param metrics A [yardstick::metric_set()] or `NULL`.
-#' @param control An object used to modify the tuning process.
+#' @param control An object used to modify the tuning process, likely created
+#' by [control_grid()].
+#' @param eval_time A numeric vector of time points where dynamic event time
+#' metrics should be computed (e.g. the time-dependent ROC curve, etc). The
+#' values must be non-negative and should probably be no greater than the
+#' largest event time in the training set (See Details below).
 #' @param ... Not currently used.
 #' @return An updated version of `resamples` with extra list columns for `.metrics` and
 #' `.notes` (optional columns are `.predictions` and `.extracts`). `.notes`
@@ -45,9 +47,9 @@
 #'         tuning parameter.
 #' }
 #'
-#' The `foreach` package is used here. To execute the resampling iterations in
-#' parallel, register a parallel backend function. See the documentation for
-#' [foreach::foreach()] for examples.
+#' tune supports parallel processing with the \pkg{future} package. To execute
+#' the resampling iterations in parallel, specify a [plan][future::plan] with
+#' future first. The `allow_par` argument can be used to avoid parallelism.
 #'
 #' For the most part, warnings generated during training are shown as they occur
 #' and are associated with a specific resample when
@@ -158,6 +160,10 @@
 #' As noted above, in some cases, model predictions can be derived for
 #'  sub-models so that, in these cases, not every row in the tuning parameter
 #'  grid has a separate R object associated with it.
+#'
+#' @template case-weights
+#' @template censored-regression
+#'
 #' @examplesIf tune:::should_run_examples(suggests = "kernlab")
 #' library(recipes)
 #' library(rsample)
@@ -250,7 +256,7 @@ tune_grid.default <- function(object, ...) {
 #' @rdname tune_grid
 tune_grid.model_spec <- function(object, preprocessor, resamples, ...,
                                  param_info = NULL, grid = 10, metrics = NULL,
-                                 control = control_grid()) {
+                                 eval_time = NULL, control = control_grid()) {
   if (rlang::is_missing(preprocessor) || !is_preprocessor(preprocessor)) {
     rlang::abort(paste(
       "To tune a model spec, you must preprocess",
@@ -276,7 +282,8 @@ tune_grid.model_spec <- function(object, preprocessor, resamples, ...,
     param_info = param_info,
     grid = grid,
     metrics = metrics,
-    control = control,
+    eval_time = eval_time,
+    control = control
   )
 }
 
@@ -284,7 +291,7 @@ tune_grid.model_spec <- function(object, preprocessor, resamples, ...,
 #' @rdname tune_grid
 tune_grid.workflow <- function(object, resamples, ..., param_info = NULL,
                                grid = 10, metrics = NULL,
-                               control = control_grid()) {
+                               eval_time = NULL, control = control_grid()) {
   empty_ellipses(...)
 
   control <- parsnip::condense_control(control, control_grid())
@@ -301,6 +308,7 @@ tune_grid.workflow <- function(object, resamples, ..., param_info = NULL,
       resamples = resamples,
       grid = grid,
       metrics = metrics,
+      eval_time = eval_time,
       pset = param_info,
       control = control
     )
@@ -314,12 +322,15 @@ tune_grid_workflow <- function(workflow,
                                resamples,
                                grid = 10,
                                metrics = NULL,
+                               eval_time = NULL,
                                pset = NULL,
                                control = control_grid(),
-                               rng = TRUE) {
+                               rng = TRUE,
+                               call = caller_env()) {
   check_rset(resamples)
 
-  metrics <- check_metrics(metrics, workflow)
+  metrics <- check_metrics_arg(metrics, workflow, call = call)
+  eval_time <- check_eval_time_arg(eval_time, metrics, call = call)
 
   pset <- check_parameters(
     workflow,
@@ -328,7 +339,7 @@ tune_grid_workflow <- function(workflow,
     grid_names = names(grid)
   )
 
-  check_workflow(workflow, pset = pset)
+  check_workflow(workflow, pset = pset, call = call)
   check_backend_options(control$backend_options)
 
   grid <- check_grid(
@@ -346,6 +357,7 @@ tune_grid_workflow <- function(workflow,
     grid = grid,
     workflow = workflow,
     metrics = metrics,
+    eval_time = eval_time,
     control = control,
     rng = rng
   )
@@ -363,6 +375,8 @@ tune_grid_workflow <- function(workflow,
     x = resamples,
     parameters = pset,
     metrics = metrics,
+    eval_time = eval_time,
+    eval_time_target = NULL,
     outcomes = outcomes,
     rset_info = rset_info,
     workflow = workflow

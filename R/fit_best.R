@@ -6,13 +6,16 @@
 #' @param x The results of class `tune_results` (coming from functions such as
 #' [tune_grid()], [tune_bayes()], etc). The control option
 #' [`save_workflow = TRUE`][tune::control_grid] should have been used.
+#' @param ... Not currently used, must be empty.
 #' @param metric A character string (or `NULL`) for which metric to optimize. If
 #' `NULL`, the first metric is used.
 #' @param parameters An optional 1-row tibble of tuning parameter settings, with
 #' a column for each tuning parameter. This tibble should have columns for each
 #' tuning parameter identifier (e.g. `"my_param"` if `tune("my_param")` was used).
 #' If `NULL`, this argument will be set to
-#' [`select_best(metric)`][tune::select_best.tune_results].
+#' [`select_best(metric, eval_time)`][tune::select_best.tune_results]. 
+#' If not `NULL`, `parameters` overwrites the specification via `metric`, and 
+#' `eval_time`.
 #' @param verbose A logical for printing logging.
 #' @param add_validation_set When the resamples embedded in `x` are a split into
 #' training set and validation set, should the validation set be included in the
@@ -20,7 +23,7 @@
 #' `NULL`, the validation set is not used for resamples originating from
 #' [rsample::validation_set()] while it is used for resamples originating
 #' from [rsample::validation_split()].
-#' @param ... Not currently used.
+#' @inheritParams select_best
 #' @details
 #' This function is a shortcut for the manual steps of:
 #'
@@ -30,9 +33,10 @@
 #'   wflow_fit <- fit(wflow, data_set)
 #' }
 #'
-#' In comparison to [last_fit()], that function requires a finalized model, fits
-#' the model on the training set defined by [rsample::initial_split()], and
-#' computes metrics from the test set.
+#' @template case-weights
+#'
+#' @inheritSection last_fit See also
+#'
 #' @examplesIf tune:::should_run_examples()
 #' library(recipes)
 #' library(rsample)
@@ -84,26 +88,43 @@ fit_best.default <- function(x, ...) {
 #' @export
 #' @rdname fit_best
 fit_best.tune_results <- function(x,
+                                  ...,
                                   metric = NULL,
+                                  eval_time = NULL,
                                   parameters = NULL,
                                   verbose = FALSE,
-                                  add_validation_set = NULL,
-                                  ...) {
-  if (length(list(...))) {
-    cli::cli_abort(c("x" = "The `...` are not used by this function."))
-  }
+                                  add_validation_set = NULL) {
+  rlang::check_dots_empty()
   wflow <- .get_tune_workflow(x)
   if (is.null(wflow)) {
     cli::cli_abort(c("x" = "The control option `save_workflow = TRUE` should be used when tuning."))
   }
 
   if (is.null(parameters)) {
+    met_set <- .get_tune_metrics(x)
+
     if (is.null(metric)) {
       metric <- .get_tune_metric_names(x)[1]
+    } else {
+      check_metric_in_tune_results(tibble::as_tibble(met_set), metric)
     }
-    parameters <- select_best(x, metric = metric)
+
+    if (is.null(eval_time) & is_dyn(met_set, metric)) {
+      eval_time <- .get_tune_eval_times(x)[1]
+    }
+
+    parameters <- select_best(x, metric = metric, eval_time = eval_time)
     if (verbose) {
       format_final_param(parameters, metric)
+    }
+  } else {
+    if (!is.null(metric)) {
+      cli::cli_warn("{.arg metric} is being ignored because {.arg parameters}
+      has been specified.")
+    }
+    if (!is.null(eval_time)) {
+      cli::cli_warn("{.arg eval_time} is being ignored because {.arg parameters}
+      has been specified.")
     }
   }
 

@@ -3,6 +3,7 @@
 #' @param x The results of [tune_grid()], [tune_bayes()], [fit_resamples()],
 #'  or [last_fit()]. For [collect_predictions()], the control option `save_pred
 #'  = TRUE` should have been used.
+#' @param ... Not currently used.
 #' @param summarize A logical; should metrics be summarized over resamples
 #' (`TRUE`) or return the values for each individual resample. Note that, if `x`
 #' is created by [last_fit()], `summarize` has no effect. For the other object
@@ -11,17 +12,25 @@
 #'  used to filter the predicted values before processing. This tibble should
 #'  only have columns for each tuning parameter identifier (e.g. `"my_param"`
 #'  if `tune("my_param")` was used).
-#' @param ... Not currently used.
+#' @param type One of `"long"` (the default) or `"wide"`. When `type = "long"`,
+#'  output has columns `.metric` and one of `.estimate` or `mean`.
+#'  `.estimate`/`mean` gives the values for the `.metric`. When `type = "wide"`,
+#'  each metric has its own column and the `n` and `std_err` columns are removed,
+#'  if they exist.
+#'
 #' @return A tibble. The column names depend on the results and the mode of the
 #' model.
 #'
 #' For [collect_metrics()] and [collect_predictions()], when unsummarized,
 #' there are columns for each tuning parameter (using the `id` from [tune()],
 #' if any).
-#' [collect_metrics()] also has columns `.metric`, and `.estimator`.  When the
-#' results are summarized, there are columns for `mean`, `n`, and `std_err`.
-#' When not summarized, the additional columns for the resampling identifier(s)
-#' and `.estimate`.
+#'
+#' [collect_metrics()] also has columns `.metric`, and `.estimator` by default.
+#' For [collect_metrics()] methods that have a `type` argument, supplying
+#' `type = "wide"` will pivot the output such that each metric has its own
+#' column. When the results are summarized, there are columns for `mean`, `n`,
+#' and `std_err`. When not summarized, the additional columns for the resampling
+#' identifier(s) and `.estimate`.
 #'
 #' For [collect_predictions()], there are additional columns for the resampling
 #' identifier(s), columns for the predicted values (e.g., `.pred`,
@@ -35,21 +44,45 @@
 #'  training set same has a single predicted value, the results are averaged
 #'  over replicate predictions.
 #'
-#' For regression cases, the numeric predictions are simply averaged. For
-#'  classification models, the problem is more complex. When class probabilities
+#' For regression cases, the numeric predictions are simply averaged.
+#'
+#' For classification models, the problem is more complex. When class probabilities
 #'  are used, these are averaged and then re-normalized to make sure that they
 #'  add to one. If hard class predictions also exist in the data, then these are
 #'  determined from the summarized probability estimates (so that they match).
 #'  If only hard class predictions are in the results, then the mode is used to
 #'  summarize.
 #'
+#' With censored outcome models, the predicted survival probabilities (if any)
+#'  are averaged while the static predicted event times are summarized using the
+#'  median.
+#'
 #' [collect_notes()] returns a tibble with columns for the resampling
 #' indicators, the location (preprocessor, model, etc.), type (error or warning),
 #' and the notes.
 #'
-#' [collect_extracts()] returns a tibble with columns for the resampling
-#' indicators, the location (preprocessor, model, etc.), and objects extracted
-#' from workflows via the `extract` argument to [control functions][control_grid()].
+#' [collect_extracts()] collects objects extracted from fitted workflows
+#' via the `extract` argument to [control functions][control_grid()]. The
+#' function returns a tibble with columns for the resampling
+#' indicators, the location (preprocessor, model, etc.), and extracted objects.
+#'
+#' @section Hyperparameters and extracted objects:
+#'
+#' When making use of submodels, tune can generate predictions and calculate
+#' metrics for multiple model `.config`urations using only one model fit.
+#' However, this means that if a function was supplied to a
+#' [control function's][control_grid()] `extract` argument, tune can only
+#' execute that extraction on the one model that was fitted. As a result,
+#' in the `collect_extracts()` output, tune opts to associate the
+#' extracted objects with the hyperparameter combination used to
+#' fit that one model workflow, rather than the hyperparameter
+#' combination of a submodel. In the output, this appears like
+#' a hyperparameter entry is recycled across many `.config`
+#' entries---this is intentional.
+#'
+#' See \url{https://parsnip.tidymodels.org/articles/Submodels.html} to learn
+#' more about submodels.
+#'
 #' @examplesIf tune:::should_run_examples(suggests = "kknn")
 #' data("example_ames_knn")
 #' # The parameters for the model:
@@ -87,7 +120,11 @@
 #'
 #' collect_predictions(resampled) %>% arrange(.row)
 #' collect_predictions(resampled, summarize = TRUE) %>% arrange(.row)
-#' collect_predictions(resampled, summarize = TRUE, grid[1, ]) %>% arrange(.row)
+#' collect_predictions(
+#'   resampled,
+#'   summarize = TRUE,
+#'   parameters = grid[1, ]
+#' ) %>% arrange(.row)
 #'
 #' collect_extracts(resampled)
 #'
@@ -99,20 +136,15 @@ collect_predictions <- function(x, ...) {
 #' @export
 #' @rdname collect_predictions
 collect_predictions.default <- function(x, ...) {
-  rlang::abort("No `collect_predictions()` exists for this type of object.")
+  cli::cli_abort(
+    "No {.fn collect_predictions} exists for {.obj_type_friendly {x}}."
+  )
 }
 
 #' @export
 #' @rdname collect_predictions
-collect_predictions.tune_results <- function(x, summarize = FALSE, parameters = NULL, ...) {
-  if (!inherits(x, "tune_results")) {
-    rlang::abort(
-      paste0(
-        "`x` should be an object produced by one of the `tune_*()` functions,",
-        "`fit_resamples()` or `last_fit()`."
-      )
-    )
-  }
+collect_predictions.tune_results <- function(x, ..., summarize = FALSE, parameters = NULL) {
+  rlang::check_dots_empty()
 
   names <- colnames(x)
   coll_col <- ".predictions"
@@ -135,6 +167,13 @@ collect_predictions.tune_results <- function(x, summarize = FALSE, parameters = 
   } else {
     x <- collector(x, coll_col = coll_col)
   }
+
+  x <- dplyr::relocate(
+    x,
+    dplyr::any_of(".pred"), dplyr::any_of(".pred_class"),
+    dplyr::any_of(".pred_time"), dplyr::starts_with(".pred")
+  )
+
   x
 }
 
@@ -210,7 +249,7 @@ prob_summarize <- function(x, p) {
   }
 
   nms <- names(x)
-  y_cols <- nms[!(nms %in% c(".row", ".iter", ".config", pred_cols, p))]
+  y_cols <- nms[!(nms %in% c(".row", ".iter", ".config", ".eval_time", pred_cols, p))]
   group_cols <- nms[!(nms %in% pred_cols)]
 
   x <-
@@ -293,10 +332,70 @@ class_summarize <- function(x, p) {
   x
 }
 
+surv_summarize <- function(x, param, y) {
+  pred_cols <- grep("^\\.pred", names(x), value = TRUE)
+  nms <- names(x)
+
+  outcomes <- x[, c(".row", y)] %>% dplyr::slice(1, .by = .row)
+
+  res <- NULL
+
+  # Use the median to summarize the static estimates
+  if (any(pred_cols == ".pred_time")) {
+    res <-
+      dplyr::summarize(
+        x,
+        .pred_time = median(.pred_time),
+        .by = c(.row, .config, dplyr::any_of(param), dplyr::any_of(".iter"))
+      )
+  }
+
+  # Simple mean to summarize dynamic probability predictions
+  if (any(pred_cols == ".pred")) {
+    nest_cols <- c(".eval_time", ".pred_survival", ".weight_censored")
+    tmp <-
+      x %>%
+      dplyr::select(.pred,
+                    .config,
+                    .row,
+                    dplyr::any_of(param),
+                    dplyr::any_of(".iter")) %>%
+      tidyr::unnest(.pred) %>%
+      dplyr::summarize(
+        .pred_survival = mean(.pred_survival, na.rm = TRUE),
+        .weight_censored = mean(.weight_censored, na.rm = TRUE),
+        .by = c(
+          .row,
+          .eval_time,
+          .config,
+          dplyr::any_of(param),
+          dplyr::any_of(".iter")
+        )
+      ) %>%
+      tidyr::nest(
+        .pred = c(dplyr::all_of(nest_cols)),
+        .by = c(.row, .config,
+                dplyr::any_of(param),
+                dplyr::any_of(".iter"))
+      )
+
+    if (!is.null(res)) {
+      dot_iter <- grep("\\.iter", nms, value = TRUE)
+      res <-
+        dplyr::full_join(tmp, res, by = c(".row", ".config", param, dot_iter))
+    } else {
+      res <- tmp
+    }
+  }
+
+  res <- dplyr::full_join(outcomes, res, by = ".row")
+  res[order(res$.row, res$.config), nms]
+}
 
 average_predictions <- function(x, grid = NULL) {
   metric_types <- metrics_info(attr(x, "metrics"))$type
   param_names <- attr(x, "parameters")$id
+  y_nms <- .get_tune_outcome_names(x)
 
   if (!is.null(grid)) {
     grid <- dplyr::select(grid, dplyr::all_of(param_names))
@@ -320,9 +419,21 @@ average_predictions <- function(x, grid = NULL) {
   if (all(metric_types == "numeric")) {
     x <- numeric_summarize(x)
   } else if (any(metric_types == "prob")) {
+    # Note that this will recompute the hard class predictions since the
+    # probability estimates are changing. That's why there is a separate
+    # branch below that summarizes the hard class predictions when those are
+    # the only predictions.
     x <- prob_summarize(x, param_names)
-  } else {
+  } else if (any(metric_types == "class")) {
     x <- class_summarize(x, param_names)
+  } else if (any(metric_types %in% c("survival", "time"))) {
+    x <- surv_summarize(x, param_names, y_nms)
+  } else {
+    msg <- paste(
+      "We don't know about metrics of type:",
+      paste(unique(metric_types), collapse = ", ")
+    )
+    rlang::abort(msg)
   }
 
   if (dplyr::is_grouped_df(x)) {
@@ -342,22 +453,47 @@ collect_metrics <- function(x, ...) {
 
 #' @export
 collect_metrics.default <- function(x, ...) {
-  rlang::abort("No `collect_metric()` exists for this type of object.")
+  cli::cli_abort(
+    "No {.fn collect_metrics} exists for {.obj_type_friendly {x}}."
+  )
 }
 
 #' @export
 #' @rdname collect_predictions
-collect_metrics.tune_results <- function(x, summarize = TRUE, ...) {
+collect_metrics.tune_results <- function(x, ..., summarize = TRUE, type = c("long", "wide")) {
+  rlang::check_dots_empty()
+  rlang::arg_match0(type, values = c("long", "wide"))
+
   if (inherits(x, "last_fit")) {
-    return(x$.metrics[[1]])
+    res <- x$.metrics[[1]]
+  } else {
+    if (summarize) {
+      res <- estimate_tune_results(x)
+    } else {
+      res <- collector(x, coll_col = ".metrics")
+    }
   }
 
-  if (summarize) {
-    res <- estimate_tune_results(x)
-  } else {
-    res <- collector(x, coll_col = ".metrics")
+  if (identical(type, "wide")) {
+    res <- pivot_metrics(x, res)
   }
+
   res
+}
+
+pivot_metrics <- function(x, x_metrics) {
+  params <- .get_tune_parameter_names(x)
+  res <- paste_param_by(x_metrics)
+
+  tidyr::pivot_wider(
+    res,
+    id_cols = c(
+      dplyr::any_of(c(params, ".config", ".iter", ".eval_time")),
+      starts_with("id")
+    ),
+    names_from = .metric,
+    values_from = dplyr::any_of(c(".estimate", "mean"))
+  )
 }
 
 collector <- function(x, coll_col = ".predictions") {
@@ -388,10 +524,10 @@ collector <- function(x, coll_col = ".predictions") {
       )
   }
 
-  arrange_cols <- c(".iter", ".config")
+  arrange_cols <- c(".eval_time", ".iter", ".config")
   arrange_cols <- arrange_cols[rlang::has_name(res, arrange_cols)]
 
-  vctrs::vec_slice(res, vctrs::vec_order(res[arrange_cols]))
+  vec_slice(res, vctrs::vec_order(res[arrange_cols]))
 }
 
 #' @export
@@ -401,7 +537,7 @@ collector <- function(x, coll_col = ".predictions") {
 .config_key_from_metrics <- function(x) {
   param_names <- .get_tune_parameter_names(x)
   tibble_metrics <- purrr::map_lgl(x[[".metrics"]], tibble::is_tibble)
-  x <- vec_slice(x, tibble_metrics)
+  x <- vctrs::vec_slice(x, tibble_metrics)
   x <- x[, colnames(x) %in% c(".iter", ".metrics")]
 
   metrics <- x[[".metrics"]]
@@ -422,9 +558,11 @@ collector <- function(x, coll_col = ".predictions") {
 #' @export
 #' @keywords internal
 #' @rdname empty_ellipses
-estimate_tune_results <- function(x, col_name = ".metrics", ...) {
+estimate_tune_results <- function(x, ..., col_name = ".metrics") {
+  rlang::check_dots_empty()
   param_names <- .get_tune_parameter_names(x)
   id_names <- grep("^id", names(x), value = TRUE)
+  group_cols <- .get_extra_col_names(x)
 
   all_bad <- is_cataclysmic(x)
   if (all_bad) {
@@ -467,9 +605,12 @@ estimate_tune_results <- function(x, col_name = ".metrics", ...) {
 
     x <- dplyr::distinct(x)
   }
+
   x <- x %>%
     tibble::as_tibble() %>%
-    dplyr::group_by(!!!rlang::syms(param_names), .metric, .estimator) %>%
+    vctrs::vec_slice(., .$id != "Apparent") %>%
+    dplyr::group_by(!!!rlang::syms(param_names), .metric, .estimator,
+                    !!!rlang::syms(group_cols)) %>%
     dplyr::summarize(
       mean = mean(.estimate, na.rm = TRUE),
       n = sum(!is.na(.estimate)),
@@ -486,7 +627,7 @@ estimate_tune_results <- function(x, col_name = ".metrics", ...) {
       dplyr::full_join(config_key, by = param_names)
   }
 
-  arrange_names <- intersect(c(".iter", ".config"), names(x))
+  arrange_names <- intersect(c(".iter", ".config", ".eval_time"), names(x))
   dplyr::arrange(x, !!!rlang::syms(arrange_names))
 }
 
@@ -500,7 +641,9 @@ collect_notes <- function(x, ...) {
 
 #' @export
 collect_notes.default <- function(x, ...) {
-  rlang::abort("No `collect_notes()` exists for this type of object.")
+  cli::cli_abort(
+    "No {.fn collect_notes} exists for {.obj_type_friendly {x}}."
+  )
 }
 
 #' @export
@@ -525,7 +668,9 @@ collect_extracts <- function(x, ...) {
 
 #' @export
 collect_extracts.default <- function(x, ...) {
-  rlang::abort("No `collect_extracts()` exists for this type of object.")
+  cli::cli_abort(
+    "No {.fn collect_extracts} exists for {.obj_type_friendly {x}}."
+  )
 }
 
 #' @export

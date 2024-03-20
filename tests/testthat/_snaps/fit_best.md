@@ -50,7 +50,7 @@
 
 ---
 
-    Please check the value of `metric`.
+    "WAT" was not in the metric set. Please choose from: "rmse" and "rsq".
 
 ---
 
@@ -62,9 +62,29 @@
 
 ---
 
-    x The `...` are not used by this function.
+    `...` must be empty.
+    x Problematic argument:
+    * chickens = 2
 
 ---
 
     x The control option `save_workflow = TRUE` should be used when tuning.
+
+# fit_best() warns when metric or eval_time are specified in addition to parameters
+
+    Code
+      manual_wf <- fit_best(res, metric = "rmse", parameters = tune_params)
+    Condition
+      Warning:
+      `metric` is being ignored because `parameters` has been specified.
+
+---
+
+    Code
+      manual_wf <- fit_best(res, metric = "rmse", eval_time = 10, parameters = tune_params)
+    Condition
+      Warning:
+      `metric` is being ignored because `parameters` has been specified.
+      Warning:
+      `eval_time` is being ignored because `parameters` has been specified.
 

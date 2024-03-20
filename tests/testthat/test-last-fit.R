@@ -25,7 +25,8 @@ test_that("formula method", {
     nrow(predict(res$.workflow[[1]], rsample::testing(split))),
     nrow(rsample::testing(split))
   )
-
+  expect_null(.get_tune_eval_times(res))
+  expect_null(.get_tune_eval_time_target(res))
 
 })
 
@@ -56,6 +57,22 @@ test_that("recipe method", {
     nrow(predict(res$.workflow[[1]], rsample::testing(split))),
     nrow(rsample::testing(split))
   )
+})
+
+test_that("model_fit method", {
+  library(parsnip)
+
+  lm_fit <- linear_reg() %>% fit(mpg ~ ., data = mtcars)
+
+  expect_snapshot(last_fit(lm_fit), error = TRUE)
+})
+
+test_that("workflow method", {
+  library(parsnip)
+
+  lm_fit <- workflows::workflow(mpg ~ ., linear_reg()) %>% fit(data = mtcars)
+
+  expect_snapshot(last_fit(lm_fit), error = TRUE)
 })
 
 test_that("collect metrics of last fit", {

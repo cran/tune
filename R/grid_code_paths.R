@@ -3,6 +3,7 @@ tune_grid_loop <- function(resamples,
                            workflow,
                            metrics,
                            control,
+                           eval_time = NULL,
                            rng) {
   fn_tune_grid_loop <- tune_grid_loop_tune
 
@@ -17,13 +18,18 @@ tune_grid_loop <- function(resamples,
     workflow,
     metrics,
     control,
+    eval_time,
     rng
   )
 
-  resamples <- pull_metrics(resamples, results, control)
-  resamples <- pull_notes(resamples, results, control)
-  resamples <- pull_extracts(resamples, results, control)
-  resamples <- pull_predictions(resamples, results, control)
+  # carry out arranging by id before extracting each element of results (#728)
+  resample_ids <- grep("^id", names(resamples), value = TRUE)
+  id_order <- vctrs::vec_order(resamples[resample_ids])
+
+  resamples <- pull_metrics(resamples, results, control, order = id_order)
+  resamples <- pull_notes(resamples, results, control, order = id_order)
+  resamples <- pull_extracts(resamples, results, control, order = id_order)
+  resamples <- pull_predictions(resamples, results, control, order = id_order)
   resamples <- pull_all_outcome_names(resamples, results)
 
   resamples
@@ -36,6 +42,7 @@ tune_grid_loop_tune <- function(resamples,
                                 workflow,
                                 metrics,
                                 control,
+                                eval_time = NULL,
                                 rng) {
   n_resamples <- nrow(resamples)
 
@@ -51,6 +58,7 @@ tune_grid_loop_tune <- function(resamples,
     workflow = workflow,
     metrics = metrics,
     control = control,
+    eval_time = eval_time,
     rng = rng,
     parallel_over = parallel_over
   )
@@ -81,6 +89,7 @@ tune_grid_loop_agua <- function(resamples,
                                 workflow,
                                 metrics,
                                 control,
+                                eval_time = NULL,
                                 rng) {
   if (!rlang::is_installed("agua")) {
     rlang::abort("`agua` must be installed to use an h2o parsnip engine.")
@@ -101,6 +110,7 @@ tune_grid_loop_agua <- function(resamples,
     workflow = workflow,
     metrics = metrics,
     control = control,
+    eval_time = eval_time,
     rng = rng,
     parallel_over = parallel_over
   )
@@ -131,6 +141,7 @@ tune_grid_loop_impl <- function(fn_tune_grid_loop_iter,
                                 workflow,
                                 metrics,
                                 control,
+                                eval_time = NULL,
                                 rng,
                                 parallel_over) {
   splits <- resamples$splits
@@ -151,7 +162,9 @@ tune_grid_loop_impl <- function(fn_tune_grid_loop_iter,
   # doParallel and PSOCK clusters.
   fn_tune_grid_loop_iter_safely <- tune_grid_loop_iter_safely
 
-  `%op%` <- get_operator(control$allow_par, workflow)
+  do_op <- get_operator(control$allow_par, workflow)
+  `%op%` <- do_op[[1]]
+  is_future <- do_op[[2]]
   `%:%` <- foreach::`%:%`
 
   rlang::local_options(doFuture.rng.onMisuse = "ignore")
@@ -159,27 +172,49 @@ tune_grid_loop_impl <- function(fn_tune_grid_loop_iter,
   if (identical(parallel_over, "resamples")) {
     seeds <- generate_seeds(rng, n_splits)
 
-    suppressPackageStartupMessages(
-      results <- foreach::foreach(
-        split = splits,
-        seed = seeds,
-        .packages = packages,
-        .errorhandling = "pass"
-      ) %op% {
-        # Likely want to debug with `debugonce(tune_grid_loop_iter)`
-        fn_tune_grid_loop_iter_safely(
-          fn_tune_grid_loop_iter = fn_tune_grid_loop_iter,
-          split = split,
-          grid_info = grid_info,
-          workflow = workflow,
-          metrics = metrics,
-          control = control,
-          seed = seed,
-          metrics_info = metrics_info,
-          params = params
-        )
+    # Evaluate the call to foreach in a local environment using a clone of
+    # the current environment so that foreach doesn't touch the exit
+    # handlers attached to the execution environment of this function
+    # by `initialize_catalog()` (#828, #845, #846).
+    results <- rlang::with_env(rlang::env_clone(rlang::current_env()), {
+      # Rather than generating them programmatically, write each `foreach()`
+      # call out since `foreach()` `substitute()`s its dots. Note that
+      # doFuture will error when passed `.packages`.
+      if (is_future) {
+        for_each <-
+          foreach::foreach(
+            split = splits,
+            seed = seeds,
+            .options.future = list(seed = NULL, packages = packages)
+          )
+      } else {
+        for_each <-
+          foreach::foreach(
+            split = splits,
+            seed = seeds,
+            .packages = packages,
+            .errorhandling = "pass"
+          )
       }
-    )
+
+      suppressPackageStartupMessages(
+        for_each %op% {
+          # Likely want to debug with `debugonce(tune_grid_loop_iter)`
+          fn_tune_grid_loop_iter_safely(
+            fn_tune_grid_loop_iter = fn_tune_grid_loop_iter,
+            split = split,
+            grid_info = grid_info,
+            workflow = workflow,
+            metrics = metrics,
+            control = control,
+            eval_time = eval_time,
+            seed = seed,
+            metrics_info = metrics_info,
+            params = params
+          )
+        }
+      )
+    })
 
     return(results)
   }
@@ -190,36 +225,64 @@ tune_grid_loop_impl <- function(fn_tune_grid_loop_iter,
 
     seeds <- generate_seeds(rng, n_splits * n_grid_info)
 
-    suppressPackageStartupMessages(
-      results <- foreach::foreach(
-        iteration = iterations,
-        split = splits,
-        .packages = packages,
-        .errorhandling = "pass"
-      ) %:%
-        foreach::foreach(
-          row = rows,
-          seed = slice_seeds(seeds, iteration, n_grid_info),
-          .packages = packages,
-          .errorhandling = "pass",
-          .combine = iter_combine
-        ) %op% {
-          grid_info_row <- vctrs::vec_slice(grid_info, row)
-
-          # Likely want to debug with `debugonce(tune_grid_loop_iter)`
-          fn_tune_grid_loop_iter_safely(
-            fn_tune_grid_loop_iter = fn_tune_grid_loop_iter,
-            split = split,
-            grid_info = grid_info_row,
-            workflow = workflow,
-            metrics = metrics,
-            control = control,
-            seed = seed,
-            metrics_info = metrics_info,
-            params = params
+    # Evaluate the call to foreach in a local environment using a clone of
+    # the current environment so that foreach doesn't touch the exit
+    # handlers attached to the execution environment of this function
+    # by `initialize_catalog()` (#828, #845, #846).
+    results <- rlang::with_env(rlang::env_clone(rlang::current_env()), {
+      # Rather than generating them programmatically, write each `foreach()`
+      # call out since `foreach()` `substitute()`s its dots. Note that
+      # doFuture will error when passed `.packages`.
+      if (is_future) {
+        for_each <-
+          foreach::foreach(
+            split = splits,
+            iteration = iterations,
+            .options.future = list(seed = NULL, packages = packages)
+          ) %:%
+          foreach::foreach(
+            row = rows,
+            .combine = iter_combine,
+            seed = slice_seeds(seeds, iteration, n_grid_info),
+            .options.future = list(seed = NULL, packages = packages)
           )
-        }
-    )
+      } else {
+        for_each <-
+          foreach::foreach(
+            split = splits,
+            iteration = iterations,
+            .packages = packages,
+            .errorhandling = "pass"
+          ) %:%
+          foreach::foreach(
+            row = rows,
+            .combine = iter_combine,
+            seed = slice_seeds(seeds, iteration, n_grid_info),
+            .packages = packages,
+            .errorhandling = "pass"
+          )
+      }
+
+      suppressPackageStartupMessages(
+        for_each %op% {
+            grid_info_row <- vctrs::vec_slice(grid_info, row)
+
+            # Likely want to debug with `debugonce(tune_grid_loop_iter)`
+            fn_tune_grid_loop_iter_safely(
+              fn_tune_grid_loop_iter = fn_tune_grid_loop_iter,
+              split = split,
+              grid_info = grid_info_row,
+              workflow = workflow,
+              metrics = metrics,
+              control = control,
+              eval_time = eval_time,
+              seed = seed,
+              metrics_info = metrics_info,
+              params = params
+            )
+          }
+      )
+    })
 
     return(results)
   }
@@ -263,9 +326,11 @@ tune_grid_loop_iter <- function(split,
                                 workflow,
                                 metrics,
                                 control,
+                                eval_time = NULL,
                                 seed,
                                 metrics_info = metrics_info(metrics),
                                 params) {
+
   load_pkgs(workflow)
   .load_namespace(control$pkgs)
 
@@ -383,20 +448,10 @@ tune_grid_loop_iter <- function(split,
         outcome_names = outcome_names
       )
 
-      # FIXME: I think this might be wrong? Doesn't use submodel parameters,
-      # so `extracts` column doesn't list the correct parameters.
       iter_grid <- dplyr::bind_cols(
         iter_grid_preprocessor,
         iter_grid_model
       )
-
-      # FIXME: bind_cols() drops number of rows with zero col data frames
-      # because of a bug with vec_cbind()
-      # https://github.com/r-lib/vctrs/issues/1281
-      if (ncol(iter_grid_preprocessor) == 0L && ncol(iter_grid_model) == 0L) {
-        nrow <- nrow(iter_grid_model)
-        iter_grid <- tibble::new_tibble(x = list(), nrow = nrow)
-      }
 
       elt_extract <- .catch_and_log(
         extract_details(workflow, control$extract),
@@ -412,8 +467,8 @@ tune_grid_loop_iter <- function(split,
       iter_msg_predictions <- paste(iter_msg_model, "(predictions)")
 
       iter_predictions <- .catch_and_log(
-        predict_model(split, workflow, iter_grid, metrics,
-                      iter_submodels, metrics_info = metrics_info),
+        predict_model(split, workflow, iter_grid, metrics, iter_submodels,
+                      metrics_info = metrics_info, eval_time = eval_time),
         control,
         split,
         iter_msg_predictions,
@@ -467,9 +522,11 @@ tune_grid_loop_iter_safely <- function(fn_tune_grid_loop_iter,
                                        workflow,
                                        metrics,
                                        control,
+                                       eval_time = NULL,
                                        seed,
                                        metrics_info,
                                        params) {
+
   fn_tune_grid_loop_iter_wrapper <- super_safely(fn_tune_grid_loop_iter)
 
   # Likely want to debug with `debugonce(tune_grid_loop_iter)`
@@ -479,6 +536,7 @@ tune_grid_loop_iter_safely <- function(fn_tune_grid_loop_iter,
     workflow,
     metrics,
     control,
+    eval_time,
     seed,
     metrics_info = metrics_info,
     params

@@ -13,6 +13,9 @@ test_that("`fit_resamples()` returns a `resample_result` object", {
   expect_s3_class(result, "resample_results")
 
   expect_equal(result, .Last.tune.result)
+
+  expect_null(.get_tune_eval_times(result))
+  expect_null(.get_tune_eval_time_target(result))
 })
 
 test_that("can use `fit_resamples()` with a formula", {
@@ -226,6 +229,7 @@ test_that("classification models generate correct error message", {
   expect_equal(extract, list(NULL, NULL))
   expect_equal(predictions, list(NULL, NULL))
 })
+
 
 # tune_grid() fallback ---------------------------------------------------------
 

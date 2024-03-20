@@ -27,6 +27,8 @@ test_that("tune recipe only", {
   expect_equal(res_est$n, rep(10, nrow(grid) * 2))
   expect_false(identical(num_comp, expr(tune())))
   expect_true(res_workflow$trained)
+  expect_null(.get_tune_eval_times(res))
+  expect_null(.get_tune_eval_time_target(res))
 })
 
 # ------------------------------------------------------------------------------
@@ -111,6 +113,224 @@ test_that("tune model only (with recipe, multi-predict)", {
   expect_equal(sum(res_est$.metric == "rmse"), nrow(grid))
   expect_equal(sum(res_est$.metric == "rsq"), nrow(grid))
   expect_equal(res_est$n, rep(10, nrow(grid) * 2))
+})
+
+test_that("tune model only (without recipe, multi-predict. #695)", {
+  skip_on_cran()
+  skip_if_not_installed("kknn")
+
+  knn_res <-
+    tune_grid(
+      parsnip::nearest_neighbor(mode = "regression", neighbors = tune("k")),
+      mpg ~ .,
+      resamples = rsample::bootstraps(mtcars, 5),
+      grid = 4
+    )
+
+  expect_equal(nrow(knn_res$.notes[[1]]), 0)
+})
+
+# ------------------------------------------------------------------------------
+
+test_that("tune model only (fairness - include `by` variable as predictor)", {
+  skip_on_cran()
+  skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+
+  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
+  mtcars_fair <- mtcars
+  mtcars_fair$vs <- as.factor(mtcars_fair$vs)
+  mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
+  mtcars_fair$am <- as.factor(mtcars_fair$am)
+  set.seed(4400)
+  boots <- rsample::bootstraps(mtcars_fair, 3)
+  n_grid <- 3
+
+  set.seed(1)
+  res <- tune_grid(
+    knn, vs ~ mpg + hp + cyl, resamples = boots, grid = n_grid,
+    metrics =
+      yardstick::metric_set(
+        yardstick::roc_auc,
+        yardstick::demographic_parity(cyl)
+      )
+  )
+
+  expect_equal(
+    colnames(res$.metrics[[1]]),
+    c("neighbors", ".metric", ".by", ".estimator", ".estimate", ".config")
+  )
+  res_est <- collect_metrics(res)
+  expect_equal(
+    colnames(res_est),
+    c("neighbors", ".metric", ".estimator", ".by", "mean", "n", "std_err", ".config")
+  )
+  expect_equal(nrow(res_est), n_grid * 2)
+  expect_equal(sum(res_est$.by == "cyl", na.rm = TRUE), n_grid)
+  expect_equal(sum(is.na(res_est$.by)), n_grid)
+  expect_equal(sum(res_est$.metric == "roc_auc"), n_grid)
+  expect_equal(sum(res_est$.metric == "demographic_parity"), n_grid)
+  expect_equal(res_est$n, rep(3, n_grid * 2))
+})
+
+test_that("tune model only (fairness - don't include `by` variable as predictor)", {
+  skip_on_cran()
+  skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+
+  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
+  mtcars_fair <- mtcars
+  mtcars_fair$vs <- as.factor(mtcars_fair$vs)
+  mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
+  mtcars_fair$am <- as.factor(mtcars_fair$am)
+  set.seed(4400)
+  boots <- rsample::bootstraps(mtcars_fair, 3)
+  n_grid <- 3
+
+  set.seed(1)
+  res2 <- tune_grid(
+    knn, vs ~ mpg + hp, resamples = boots, grid = n_grid,
+    metrics =
+      yardstick::metric_set(
+        yardstick::roc_auc,
+        yardstick::demographic_parity(cyl)
+      )
+  )
+
+  expect_equal(
+    colnames(res2$.metrics[[1]]),
+    c("neighbors", ".metric", ".by", ".estimator", ".estimate", ".config")
+  )
+  res_est2 <- collect_metrics(res2)
+  expect_equal(
+    colnames(res_est2),
+    c("neighbors", ".metric", ".estimator", ".by", "mean", "n", "std_err", ".config")
+  )
+  expect_equal(nrow(res_est2), n_grid * 2)
+  expect_equal(sum(res_est2$.by == "cyl", na.rm = TRUE), n_grid)
+  expect_equal(sum(is.na(res_est2$.by)), n_grid)
+  expect_equal(sum(res_est2$.metric == "roc_auc"), n_grid)
+  expect_equal(sum(res_est2$.metric == "demographic_parity"), n_grid)
+  expect_equal(res_est2$n, rep(3, n_grid * 2))
+})
+
+test_that("tune model only (fairness metrics - evaluate across multiple `by`)", {
+  skip_on_cran()
+  skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+
+  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
+  mtcars_fair <- mtcars
+  mtcars_fair$vs <- as.factor(mtcars_fair$vs)
+  mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
+  mtcars_fair$am <- as.factor(mtcars_fair$am)
+  set.seed(4400)
+  boots <- rsample::bootstraps(mtcars_fair, 3)
+  n_grid <- 3
+
+  set.seed(1)
+  res3 <- tune_grid(
+    knn, vs ~ mpg + hp, resamples = boots, grid = n_grid,
+    metrics =
+      yardstick::metric_set(
+        yardstick::roc_auc,
+        yardstick::demographic_parity(cyl),
+        yardstick::equal_opportunity(am)
+      )
+  )
+
+  expect_equal(
+    colnames(res3$.metrics[[1]]),
+    c("neighbors", ".metric", ".by", ".estimator", ".estimate", ".config")
+  )
+  res_est3 <- collect_metrics(res3)
+  expect_equal(
+    colnames(res_est3),
+    c("neighbors", ".metric", ".estimator", ".by", "mean", "n", "std_err", ".config")
+  )
+  expect_equal(nrow(res_est3), n_grid * 3)
+  expect_equal(sum(res_est3$.by == "cyl", na.rm = TRUE), n_grid)
+  expect_equal(sum(is.na(res_est3$.by)), n_grid)
+  expect_equal(sum(res_est3$.metric == "roc_auc"), n_grid)
+  expect_equal(sum(res_est3$.metric == "demographic_parity"), n_grid)
+  expect_equal(res_est3$n, rep(3, n_grid * 3))
+})
+
+test_that("tune model only (fairness - evaluate across multiple `by`, same metric)", {
+  skip_on_cran()
+  skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+
+  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
+  mtcars_fair <- mtcars
+  mtcars_fair$vs <- as.factor(mtcars_fair$vs)
+  mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
+  mtcars_fair$am <- as.factor(mtcars_fair$am)
+  set.seed(4400)
+  boots <- rsample::bootstraps(mtcars_fair, 3)
+  n_grid <- 3
+
+  set.seed(1)
+  res4 <- tune_grid(
+    knn, vs ~ mpg + hp, resamples = boots, grid = n_grid,
+    metrics =
+      yardstick::metric_set(
+        yardstick::roc_auc,
+        yardstick::demographic_parity(cyl),
+        yardstick::demographic_parity(am)
+      )
+  )
+
+  expect_equal(
+    colnames(res4$.metrics[[1]]),
+    c("neighbors", ".metric", ".by", ".estimator", ".estimate", ".config")
+  )
+  res_est4 <- collect_metrics(res4)
+  expect_equal(
+    colnames(res_est4),
+    c("neighbors", ".metric", ".estimator", ".by", "mean", "n", "std_err", ".config")
+  )
+  expect_equal(nrow(res_est4), n_grid * 3)
+  expect_equal(sum(res_est4$.by == "cyl", na.rm = TRUE), n_grid)
+  expect_equal(sum(res_est4$.by == "am", na.rm = TRUE), n_grid)
+  expect_equal(sum(is.na(res_est4$.by)), n_grid)
+  expect_equal(sum(res_est4$.metric == "roc_auc"), n_grid)
+  expect_equal(sum(res_est4$.metric == "demographic_parity"), n_grid * 2)
+  expect_equal(res_est4$n, rep(3, n_grid * 3))
+})
+
+test_that("tune model only (fairness - evaluate only fairness metrics)", {
+  skip_on_cran()
+  skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+
+  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
+  mtcars_fair <- mtcars
+  mtcars_fair$vs <- as.factor(mtcars_fair$vs)
+  mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
+  mtcars_fair$am <- as.factor(mtcars_fair$am)
+  set.seed(4400)
+  boots <- rsample::bootstraps(mtcars_fair, 3)
+  n_grid <- 3
+
+  set.seed(1)
+  res5 <- tune_grid(
+    knn, vs ~ mpg + hp, resamples = boots, grid = n_grid,
+    metrics =
+      yardstick::metric_set(
+        yardstick::demographic_parity(cyl)
+      )
+  )
+
+  expect_equal(
+    colnames(res5$.metrics[[1]]),
+    c("neighbors", ".metric", ".by", ".estimator", ".estimate", ".config")
+  )
+  res_est5 <- collect_metrics(res5)
+  expect_equal(
+    colnames(res_est5),
+    c("neighbors", ".metric", ".estimator", ".by", "mean", "n", "std_err", ".config")
+  )
+  expect_equal(nrow(res_est5), n_grid)
+  expect_equal(sum(res_est5$.by == "cyl", na.rm = TRUE), n_grid)
+  expect_equal(sum(is.na(res_est5$.by)), 0)
+  expect_equal(sum(res_est5$.metric == "demographic_parity"), n_grid)
+  expect_equal(res_est5$n, rep(3, n_grid))
 })
 
 # ------------------------------------------------------------------------------

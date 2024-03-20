@@ -6,6 +6,7 @@ test_that("augment fit_resamples", {
   lr_spec <- parsnip::logistic_reg() %>% parsnip::set_engine("glm")
 
   set.seed(1)
+  two_class_dat <- as.data.frame(two_class_dat)
   bt1 <- rsample::bootstraps(two_class_dat, times = 30)
 
   set.seed(1)
@@ -23,6 +24,16 @@ test_that("augment fit_resamples", {
   expect_true(sum(names(aug_1) == ".pred_Class1") == 1)
   expect_true(sum(names(aug_1) == ".pred_Class2") == 1)
   expect_true(sum(names(aug_1) == ".resid") == 0)
+  expect_s3_class_bare_tibble(aug_1)
+
+  expect_true(names(aug_1)[1] == ".pred_class")
+  expect_true(names(aug_1)[2] == ".pred_Class1")
+  expect_true(names(aug_1)[3] == ".pred_Class2")
+
+  expect_identical(
+    rle(grepl("^\\.", names(aug_1)))$values,
+    c(TRUE, FALSE)
+  )
 
   expect_snapshot(error = TRUE, augment(fit_1, hey = "you"))
 })
@@ -33,6 +44,7 @@ test_that("augment fit_resamples", {
   lr_spec <- parsnip::logistic_reg() %>% parsnip::set_engine("glm")
 
   set.seed(1)
+  two_class_dat <- as.data.frame(two_class_dat)
   bt2 <- rsample::bootstraps(two_class_dat, times = 3)
 
   set.seed(1)
@@ -50,6 +62,16 @@ test_that("augment fit_resamples", {
   expect_true(sum(names(aug_2) == ".pred_class") == 1)
   expect_true(sum(names(aug_2) == ".pred_Class1") == 1)
   expect_true(sum(names(aug_2) == ".pred_Class2") == 1)
+  expect_s3_class_bare_tibble(aug_2)
+
+  expect_true(names(aug_2)[1] == ".pred_class")
+  expect_true(names(aug_2)[2] == ".pred_Class1")
+  expect_true(names(aug_2)[3] == ".pred_Class2")
+
+  expect_identical(
+    rle(grepl("^\\.", names(aug_2)))$values,
+    c(TRUE, FALSE)
+  )
 })
 
 # ------------------------------------------------------------------------------
@@ -77,6 +99,14 @@ test_that("augment tune_grid", {
   expect_true(sum(!is.na(aug_1$.pred)) == nrow(mtcars))
   expect_true(sum(names(aug_1) == ".pred") == 1)
   expect_true(sum(names(aug_1) == ".resid") == 1)
+  expect_s3_class_bare_tibble(aug_1)
+
+  expect_true(names(aug_1)[1] == ".pred")
+
+  expect_identical(
+    rle(grepl("^\\.", names(aug_1)))$values,
+    c(TRUE, FALSE)
+  )
 
   aug_2 <- augment(fit_1, parameters = data.frame(cost = 3))
   expect_true(any(abs(aug_1$.pred - aug_2$.pred) > 1))
@@ -113,6 +143,9 @@ test_that("augment tune_grid", {
   expect_true(sum(!is.na(aug_3$.pred)) == nrow(mtcars))
   expect_true(sum(names(aug_3) == ".pred") == 1)
   expect_true(sum(names(aug_3) == ".resid") == 1)
+  expect_s3_class_bare_tibble(aug_3)
+
+  expect_true(names(aug_3)[1] == ".pred")
 })
 
 
@@ -131,6 +164,16 @@ test_that("augment last_fit", {
   expect_true(sum(names(aug_1) == ".pred_class") == 1)
   expect_true(sum(names(aug_1) == ".pred_Class1") == 1)
   expect_true(sum(names(aug_1) == ".pred_Class2") == 1)
+  expect_s3_class_bare_tibble(aug_1)
+
+  expect_true(names(aug_1)[1] == ".pred_class")
+  expect_true(names(aug_1)[2] == ".pred_Class1")
+  expect_true(names(aug_1)[3] == ".pred_Class2")
+
+  expect_identical(
+    rle(grepl("^\\.", names(aug_1)))$values,
+    c(TRUE, FALSE)
+  )
 
   expect_snapshot(error = TRUE, augment(fit_1, potato = TRUE))
 })

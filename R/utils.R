@@ -67,6 +67,17 @@ new_bare_tibble <- function(x, ..., class = character()) {
   tibble::new_tibble(x, nrow = nrow(x), ..., class = class)
 }
 
+# a helper that takes in a .config vector and returns the corresponding `.iter`.
+# entries from initial results, e.g. `Model1_Preprocessor3`, are assigned
+# `.iter = 0`.
+.config_to_.iter <- function(.config) {
+  .iter <- .config
+  nonzero <- grepl("Iter", .iter)
+  .iter <- ifelse(nonzero, gsub("Iter", "", .iter), "0")
+  .iter <- as.numeric(.iter)
+  .iter
+}
+
 ## -----------------------------------------------------------------------------
 
 #' Various accessor functions
@@ -109,6 +120,25 @@ new_bare_tibble <- function(x, ..., class = character()) {
   res
 }
 
+
+#' @export
+#' @rdname tune_accessor
+# This will return any other columns that should be added to the group_by()
+# when computing the final (averaged) resampling estimate
+.get_extra_col_names <- function(x) {
+  res <- character(0)
+  mtrcs <- x$.metrics[[1]]
+  if (any(names(mtrcs) == ".eval_time")) {
+    res <- c(res, ".eval_time")
+  }
+  if (any(names(mtrcs) == ".by")) {
+    res <- c(res, ".by")
+  }
+  res
+}
+
+
+
 #' @export
 #' @rdname tune_accessor
 .get_tune_metrics <- function(x) {
@@ -129,6 +159,31 @@ new_bare_tibble <- function(x, ..., class = character()) {
     res <- names(attributes(x$metrics)$metrics)
   } else {
     res <- character(0)
+  }
+  res
+}
+
+
+#' @export
+#' @rdname tune_accessor
+.get_tune_eval_times <- function(x) {
+  x <- attributes(x)
+  if (any(names(x) == "eval_time")) {
+    res <- x$eval_time
+  } else {
+    res <- NULL
+  }
+  res
+}
+
+#' @export
+#' @rdname tune_accessor
+.get_tune_eval_time_target <- function(x) {
+  x <- attributes(x)
+  if (any(names(x) == "eval_time_target")) {
+    res <- x$eval_time_target
+  } else {
+    res <- NULL
   }
   res
 }

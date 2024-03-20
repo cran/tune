@@ -116,7 +116,7 @@
       tune:::check_metrics(metric_set1, workflow1)
     Condition
       Error in `tune:::check_metrics()`:
-      ! The parsnip model has `mode = 'regression'`, but `metrics` is a metric set for class / probability metrics.
+      ! The parsnip model has `mode = 'regression'`, but `metrics` is a metric set for a different model mode.
 
 ---
 
@@ -124,7 +124,7 @@
       tune:::check_metrics(metric_set2, workflow2)
     Condition
       Error in `tune:::check_metrics()`:
-      ! The parsnip model has `mode = 'classification'`, but `metrics` is a metric set for regression metrics.
+      ! The parsnip model has `mode = 'classification'`, but `metrics` is a metric set for a different model mode.
 
 # grid control objects
 
@@ -272,8 +272,9 @@
 # initial values
 
     Code
-      tune:::check_initial(data.frame(), extract_parameter_set_dials(wflow_1),
-      wflow_1, mtfolds, yardstick::metric_set(yardstick::rsq), control_bayes())
+      tune:::check_initial(data.frame(), pset = extract_parameter_set_dials(wflow_1),
+      wflow = wflow_1, resamples = mtfolds, metrics = yardstick::metric_set(
+        yardstick::rsq), ctrl = control_bayes())
     Condition
       Error in `tune:::check_initial()`:
       ! `initial` should be a positive integer or the results of [tune_grid()]
@@ -346,5 +347,5 @@
       tune:::check_parameters(w4, data = mtcars)
     Condition
       Error in `tune:::check_parameters()`:
-      ! Some tuning parameters require finalization but there are recipe parameters that require tuning. Please use `parameters()` to finalize the parameter ranges.
+      ! Some model parameters require finalization but there are recipe parameters that require tuning. Please use  `extract_parameter_set_dials()` to set parameter ranges  manually and supply the output to the `param_info` argument.
 

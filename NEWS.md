@@ -1,8 +1,65 @@
+# tune 1.2.0
+
+## New Features
+
+* tune now fully supports models in the "censored regression" mode. These models can be fit, tuned, and evaluated like the regression and classification modes. [tidymodels.org](https://www.tidymodels.org/learn/#category=survival%20analysis) has more information and tutorials on how to work with survival analysis models.
+
+* Introduced support for parallel processing using the [future](https://www.futureverse.org/) framework. The tune package previously supported parallelism with foreach, and users can use either framework for now. In a future release, tune will begin the deprecation cycle for parallelism with foreach, so we encourage users to begin migrating their code now. See [the _Parallel Processing_ section in the "Optimizations" article](https://tune.tidymodels.org/articles/extras/optimizations.html#parallel-processing) to learn more (#866).
+
+* Added a `type` argument to `collect_metrics()` to indicate the desired output format. The default, `type = "long"`, returns output as before, while `type = "wide"` pivots the output such that each metric has its own column (#839).
+
+* Added a new function, `compute_metrics()`, that allows for computing new metrics after evaluating against resamples. The arguments and output formats are closely related to those from `collect_metrics()`, but this function requires that the input be generated with the control option `save_pred = TRUE` and additionally takes a `metrics` argument with a metric set for new metrics to compute. This allows for computing new performance metrics without requiring users to re-fit and re-predict from each model (#663).
+
+* A method for rsample's `int_pctl()` function that will compute percentile confidence intervals on performance metrics for objects produced by `fit_resamples()`, `tune_*()`, and `last_fit()`. 
+
+* The Brier score is now part of the default metric set for classification models.
+
+
+## Bug Fixes
+
+* `last_fit()` will now error when supplied a fitted workflow (#678).
+
+* Fixes bug where `.notes` entries were sorted in the wrong order in tuning results for resampling schemes with IDs that aren't already in alphabetical order (#728).
+
+* Fixes bug where `.config` entries in the `.extracts` column in `tune_bayes()` output didn't align with the entries they ought to in the `.metrics` and `.predictions` columns (#715).
+
+* Metrics from apparent resamples are no longer included when estimating performance with `estimate_tune_results()` (and thus with `collect_metrics(..., summarize = TRUE)` and `compute_metrics(..., summarize = TRUE)`, #714).
+
+* Handles edge cases for `tune_bayes()`' `iter` argument more soundly. For `iter = 0`, the output of `tune_bayes()` should match `tune_grid()`, and `tune_bayes()` will now error when `iter < 0`. `tune_bayes()` will now alter the state of RNG slightly differently, resulting in changed Bayesian optimization search output (#720).
+
+* `augment()` methods to `tune_results`, `resample_results`, and `last_fit` objects now always return tibbles (#759).
+
+## Other Changes
+
+* Improved error message when needed packages aren't installed (#727).
+
+* `augment()` methods to `tune_results`, `resample_results`, and `last_fit` objects now always returns tibbles (#759).
+
+* Improves documentation related to the hyperparameters associated with extracted objects that are generated from submodels. See the "Extracting with submodels" section of `?collect_extracts` to learn more.
+
+* `eval_time` and `eval_time_target` attribute was added to tune objects. There are also  `.get_tune_eval_times()` and `.get_tune_eval_time_target()` functions.
+
+* `collect_predictions()` now reorders the columns so that all prediction columns come first (#798). 
+
+* `augment()` methods to `tune_results`, `resample_results`, and `last_fit` objects now return prediction results in the first columns (#761).
+
+* `autoplot()` will now meaningfully error if only 1 grid point is present, rather than producing a plot (#775).
+
+* Added notes on case weight usage to several functions (#805).
+
+* For iterative optimization routines, `autoplot()` will use integer breaks when `type = "performance"` or `type = "parameters"`.
+
+## Breaking Changes
+
+* Several functions gained an `eval_time` argument for the evaluation time of dynamic metrics for censored regression. The placement of the argument breaks passing-by-position for one or more other arguments to `autoplot.tune_results()` and the developer-focused `check_initial()` (#857).
+
+* Ellipses (...) are now used consistently in the package to require optional arguments to be named. For functions that previously had ellipses at the end of the function signature, they have been moved to follow the last argument without a default value: this applies to `augment.tune_results()`, `collect_predictions.tune_results()`, `collect_metrics.tune_results()`, `select_best.tune_results()`, `show_best.tune_results()`, and the developer-focused `estimate_tune_results()`, `load_pkgs()`, and `encode_set()`. Several other functions that previously did not have ellipses in their signatures gained them: this applies to `conf_mat_resampled()` and the developer-focused `check_workflow()`. Optional arguments previously passed by position will now error informatively prompting them to be named. These changes don't apply in cases when the ellipses are currently in use to forward arguments to other functions (#863).
+
 # tune 1.1.2
 
 * `last_fit()` now works with the 3-way validation split objects from `rsample::initial_validation_split()`. `last_fit()` and `fit_best()` now have a new argument `add_validation_set` to include or exclude the validation set in the dataset used to fit the model (#701).
 
-* Disambiguates the `verbose` and `verbose_iter` control options to better align with documented functionality. The former controls logging for general progress updates, while the latter only does so for the Bayesian search process. (#682)
+* Disambiguates the `verbose` and `verbose_iter` control options to better align with documented functionality. The former controls logging for general progress updates, while the latter only does so for the Bayesian search process. (#682) 
 
 # tune 1.1.1
 

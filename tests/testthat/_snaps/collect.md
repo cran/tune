@@ -6,6 +6,14 @@
       Error in `collect_predictions()`:
       ! The `.predictions` column does not exist. Refit with the control argument `save_pred = TRUE` to save predictions.
 
+# `collect_predictions()` errors informatively applied to unsupported class
+
+    Code
+      collect_predictions(lm(mpg ~ disp, mtcars))
+    Condition
+      Error in `collect_predictions()`:
+      ! No `collect_predictions()` exists for a <lm> object.
+
 # bad filter grid
 
     Code
@@ -14,57 +22,13 @@
       Error in `filter_predictions()`:
       ! `parameters` should only have columns: 'cost value'
 
-# collecting notes - fit_resamples
+# `collect_notes()` errors informatively applied to unsupported class
 
     Code
-      lm_splines <- fit_resamples(lin_mod, mpg ~ ., flds)
-    Message
-      ! Bootstrap1: preprocessor 1/1, model 1/1 (predictions): prediction from a rank-deficient fit may be misleading
-      ! Bootstrap2: preprocessor 1/1, model 1/1 (predictions): prediction from a rank-deficient fit may be misleading
-
----
-
-    Code
-      lm_splines
-    Output
-      # Resampling results
-      # Bootstrap sampling 
-      # A tibble: 2 x 4
-        splits          id         .metrics         .notes          
-        <list>          <chr>      <list>           <list>          
-      1 <split [32/13]> Bootstrap1 <tibble [2 x 4]> <tibble [1 x 3]>
-      2 <split [32/17]> Bootstrap2 <tibble [2 x 4]> <tibble [1 x 3]>
-      
-      There were issues with some computations:
-      
-        - Warning(s) x2: prediction from a rank-deficient fit may be misleading
-      
-      Run `show_notes(.Last.tune.result)` for more information.
-
-# collecting notes - last_fit
-
-    Code
-      lst <- last_fit(lin_mod, mpg ~ ., split)
-    Message
-      ! train/test split: preprocessor 1/1, model 1/1 (predictions): prediction from a rank-deficient fit may be misleading
-
----
-
-    Code
-      lst
-    Output
-      # Resampling results
-      # Manual resampling 
-      # A tibble: 1 x 6
-        splits         id               .metrics .notes   .predictions     .workflow 
-        <list>         <chr>            <list>   <list>   <list>           <list>    
-      1 <split [24/8]> train/test split <tibble> <tibble> <tibble [8 x 4]> <workflow>
-      
-      There were issues with some computations:
-      
-        - Warning(s) x1: prediction from a rank-deficient fit may be misleading
-      
-      Run `show_notes(.Last.tune.result)` for more information.
+      collect_notes(lm(mpg ~ disp, mtcars))
+    Condition
+      Error in `collect_notes()`:
+      ! No `collect_notes()` exists for a <lm> object.
 
 # collecting extracted objects - fit_resamples
 
@@ -103,11 +67,35 @@
       4 Bootstrap4 <try-errr [1]> Preprocessor1_Model1
       5 Bootstrap5 <try-errr [1]> Preprocessor1_Model1
 
+# `collect_extracts()` errors informatively applied to unsupported class
+
+    Code
+      collect_extracts(lm(mpg ~ disp, mtcars))
+    Condition
+      Error in `collect_extracts()`:
+      ! No `collect_extracts()` exists for a <lm> object.
+
+# `collect_metrics()` errors informatively applied to unsupported class
+
+    Code
+      collect_metrics(lm(mpg ~ disp, mtcars))
+    Condition
+      Error in `collect_metrics()`:
+      ! No `collect_metrics()` exists for a <lm> object.
+
+# `collect_metrics(type)` errors informatively with bad input
+
+    Code
+      collect_metrics(ames_grid_search, type = "boop")
+    Condition
+      Error in `collect_metrics()`:
+      ! `type` must be one of "long" or "wide", not "boop".
+
 ---
 
     Code
-      collect_extracts("boop")
+      collect_metrics(ames_grid_search, type = NULL)
     Condition
-      Error in `collect_extracts()`:
-      ! No `collect_extracts()` exists for this type of object.
+      Error in `collect_metrics()`:
+      ! `type` must be a string or character vector.
 

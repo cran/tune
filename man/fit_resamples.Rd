@@ -14,6 +14,7 @@ fit_resamples(object, ...)
   resamples,
   ...,
   metrics = NULL,
+  eval_time = NULL,
   control = control_resamples()
 )
 
@@ -22,23 +23,31 @@ fit_resamples(object, ...)
   resamples,
   ...,
   metrics = NULL,
+  eval_time = NULL,
   control = control_resamples()
 )
 }
 \arguments{
-\item{object}{A \code{parsnip} model specification or a \code{\link[workflows:workflow]{workflows::workflow()}}.
-No tuning parameters are allowed.}
+\item{object}{A \code{parsnip} model specification or an unfitted
+\link[workflows:workflow]{workflow()}. No tuning parameters are allowed; if arguments
+have been marked with \link[hardhat:tune]{tune()}, their values must be
+\link[=finalize_model]{finalized}.}
 
 \item{...}{Currently unused.}
 
 \item{preprocessor}{A traditional model formula or a recipe created using
 \code{\link[recipes:recipe]{recipes::recipe()}}.}
 
-\item{resamples}{A resample \code{rset} created from an \code{rsample} function such
-as \code{\link[rsample:vfold_cv]{rsample::vfold_cv()}}.}
+\item{resamples}{An \code{rset} resampling object created from an \code{rsample}
+function, such as \code{\link[rsample:vfold_cv]{rsample::vfold_cv()}}.}
 
 \item{metrics}{A \code{\link[yardstick:metric_set]{yardstick::metric_set()}}, or \code{NULL} to compute a standard
 set of metrics.}
+
+\item{eval_time}{A numeric vector of time points where dynamic event time
+metrics should be computed (e.g. the time-dependent ROC curve, etc). The
+values must be non-negative and should probably be no greater than the
+largest event time in the training set (See Details below).}
 
 \item{control}{A \code{\link[=control_resamples]{control_resamples()}} object used to fine tune the resampling
 process.}
@@ -49,6 +58,64 @@ resamples. It does not perform any tuning (see \code{\link[=tune_grid]{tune_grid
 \code{\link[=tune_bayes]{tune_bayes()}} for that), and is instead used for fitting a single
 model+recipe or model+formula combination across many resamples.
 }
+\section{Case Weights}{
+
+Some models can utilize case weights during training. tidymodels currently
+supports two types of case weights: importance weights (doubles) and
+frequency weights (integers). Frequency weights are used during model
+fitting and evaluation, whereas importance weights are only used during
+fitting.
+
+To know if your model is capable of using case weights, create a model spec
+and test it using \code{\link[parsnip:case_weights_allowed]{parsnip::case_weights_allowed()}}.
+
+To use them, you will need a numeric column in your data set that has been
+passed through either \code{\link[hardhat:importance_weights]{hardhat:: importance_weights()}} or
+\code{\link[hardhat:frequency_weights]{hardhat::frequency_weights()}}.
+
+For functions such as \code{\link[=fit_resamples]{fit_resamples()}} and the \verb{tune_*()} functions, the
+model must be contained inside of a \code{\link[workflows:workflow]{workflows::workflow()}}. To declare that
+case weights are used, invoke \code{\link[workflows:add_case_weights]{workflows::add_case_weights()}} with the
+corresponding (unquoted) column name.
+
+From there, the packages will appropriately handle the weights during model
+fitting and (if appropriate) performance estimation.
+}
+
+\section{Censored Regression Models}{
+
+
+Three types of metrics can be used to assess the quality of censored
+regression models:
+\itemize{
+\item static: the prediction is independent of time.
+\item dynamic: the prediction is a time-specific probability (e.g., survival
+probability) and is measured at one or more particular times.
+\item integrated: same as the dynamic metric but returns the integral of the
+different metrics from each time point.
+}
+
+Which metrics are chosen by the user affects how many evaluation times
+should be specified. For example:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{# Needs no `eval_time` value
+metric_set(concordance_survival)
+
+# Needs at least one `eval_time`
+metric_set(brier_survival)
+metric_set(brier_survival, concordance_survival)
+
+# Needs at least two eval_time` values
+metric_set(brier_survival_integrated, concordance_survival)
+metric_set(brier_survival_integrated, concordance_survival)
+metric_set(brier_survival_integrated, concordance_survival, brier_survival)
+}\if{html}{\out{</div>}}
+
+Values of \code{eval_time} should be less than the largest observed event
+time in the training data. For many non-parametric models, the results beyond
+the largest time corresponding to an event are constant (or \code{NA}).
+}
+
 \section{Performance Metrics}{
 
 

@@ -2,6 +2,8 @@
 #'
 #' @inheritParams control_bayes
 #'
+#' @inheritSection collect_predictions Hyperparameters and extracted objects
+#'
 #' @details
 #'
 #' For `extract`, this function can be used to output the model object, the
@@ -133,7 +135,13 @@ print.control_last_fit <- function(x, ...) {
 #'  chosen (i.e., in a region that has not yet been explored). The iteration
 #'  counter is reset after each uncertainty sample. For example, if `uncertain =
 #'  10`, this condition is triggered every 10 samples with no improvement.
-#' @param seed An integer for controlling the random number stream.
+#' @param seed An integer for controlling the random number stream. Tuning
+#' functions are sensitive to both the state of RNG set outside of tuning
+#' functions with `set.seed()` as well as the value set here. The value of the
+#' former determines RNG for the higher-level tuning process, like grid
+#' generation and setting the value of this argument if left as default. The
+#' value of this argument determines RNG state in workers for each iteration
+#' of model fitting, determined by the value of `parallel_over`.
 #' @param time_limit A number for the minimum number of _minutes_ (elapsed) that
 #'   the function should execute. The elapsed time is evaluated at internal
 #'   checkpoints and, if over time, the results at that time are returned (with
@@ -189,6 +197,8 @@ print.control_last_fit <- function(x, ...) {
 #'   backend. Defaults to `NULL` for default backend options.
 #' @param allow_par A logical to allow parallel processing (if a parallel
 #'   backend is registered).
+#'
+#' @inheritSection collect_predictions Hyperparameters and extracted objects
 #'
 #' @details
 #'
@@ -277,6 +287,7 @@ control_bayes <-
     res
   }
 
+#' @export
 print.control_bayes <- function(x, ...) {
   cat("bayes control object\n")
   invisible(x)

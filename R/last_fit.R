@@ -4,8 +4,10 @@
 #' the final fit on the entire training set is needed and is then evaluated on
 #' the test set.
 #'
-#' @param object A `parsnip` model specification or a [workflows::workflow()].
-#'   No tuning parameters are allowed.
+#' @param object A `parsnip` model specification or an unfitted
+#'   [workflow()][workflows::workflow]. No tuning parameters are allowed; if arguments
+#'   have been marked with [tune()][hardhat::tune], their values must be
+#'   [finalized][finalize_model].
 #'
 #' @param preprocessor A traditional model formula or a recipe created using
 #'   [recipes::recipe()].
@@ -19,6 +21,8 @@
 #' @param control A [control_last_fit()] object used to fine tune the last fit
 #'   process.
 #'
+#' @inheritParams tune_grid
+#'
 #' @param add_validation_set For 3-way splits into training, validation, and test
 #' set via [rsample::initial_validation_split()], should the validation set be
 #' included in the data set used to train the model. If not, only the training
@@ -31,9 +35,30 @@
 #'  and the final tuning parameters (if any) have been finalized. The next step
 #'  would be to fit using the entire training set and verify performance using
 #'  the test data.
+#'
+#' @template case-weights
+#' @template censored-regression
+#' 
+#' @section See also:
+#'
+#' [last_fit()] is closely related to [fit_best()]. They both
+#' give you access to a workflow fitted on the training data but are situated
+#' somewhat differently in the modeling workflow. [fit_best()] picks up
+#' after a tuning function like [tune_grid()] to take you from tuning results
+#' to fitted workflow, ready for you to predict and assess further. [last_fit()]
+#' assumes you have made your choice of hyperparameters and finalized your
+#' workflow to then take you from finalized workflow to fitted workflow and
+#' further to performance assessment on the test data. While [fit_best()] gives
+#' a fitted workflow, [last_fit()] gives you the performance results. If you
+#' want the fitted workflow, you can extract it from the result of [last_fit()]
+#' via [extract_workflow()][extract_workflow.tune_results].
+#'
+#'
 #' @return A single row tibble that emulates the structure of `fit_resamples()`.
 #' However, a list column called `.workflow` is also attached with the fitted
-#' model (and recipe, if any) that used the training set.
+#' model (and recipe, if any) that used the training set. Helper functions
+#' for formatting tuning results like [collect_metrics()] and
+#' [collect_predictions()] can be used with `last_fit()` output.
 #' @examplesIf tune:::should_run_examples()
 #' library(recipes)
 #' library(rsample)
@@ -51,8 +76,11 @@
 #' spline_res <- last_fit(lin_mod, spline_rec, split = tr_te_split)
 #' spline_res
 #'
-#' # test set results
-#' spline_res$.metrics[[1]]
+#' # test set metrics
+#' collect_metrics(spline_res)
+#'
+#' # test set predictions
+#' collect_predictions(spline_res)
 #'
 #' # or use a workflow
 #'
@@ -78,9 +106,21 @@ last_fit.default <- function(object, ...) {
 }
 
 #' @export
+last_fit.model_fit <- function(object, ...) {
+  cli::cli_abort(c(
+    "{.help [{.fun last_fit}](tune::last_fit)} is not well-defined for \\
+     fitted model objects.",
+    "i" = "{.help [{.fun last_fit}](tune::last_fit)} takes \\
+           a {.help [model specification](parsnip::model_spec)} or \\
+           {.help [unfitted workflow](workflows::workflow)} as its first \\
+           argument."
+  ))
+}
+
+#' @export
 #' @rdname last_fit
 last_fit.model_spec <- function(object, preprocessor, split, ..., metrics = NULL,
-                                control = control_last_fit(),
+                                eval_time = NULL, control = control_last_fit(),
                                 add_validation_set = FALSE) {
   if (rlang::is_missing(preprocessor) || !is_preprocessor(preprocessor)) {
     rlang::abort(paste(
@@ -101,24 +141,55 @@ last_fit.model_spec <- function(object, preprocessor, split, ..., metrics = NULL
     wflow <- add_formula(wflow, preprocessor)
   }
 
-  last_fit_workflow(wflow, split, metrics, control, add_validation_set)
+  last_fit_workflow(
+    wflow, 
+    split = split, 
+    metrics = metrics, 
+    eval_time = eval_time,
+    control = control, 
+    add_validation_set = add_validation_set
+  )
 }
 
 
 #' @rdname last_fit
 #' @export
 last_fit.workflow <- function(object, split, ..., metrics = NULL,
-                              control = control_last_fit(),
+                              eval_time = NULL, control = control_last_fit(),
                               add_validation_set = FALSE) {
   empty_ellipses(...)
 
   control <- parsnip::condense_control(control, control_last_fit())
 
-  last_fit_workflow(object, split, metrics, control, add_validation_set)
+  last_fit_workflow(
+    object, 
+    split = split, 
+    metrics = metrics, 
+    eval_time = eval_time,
+    control = control, 
+    add_validation_set = add_validation_set
+  )
 }
 
-last_fit_workflow <- function(object, split, metrics, control, add_validation_set) {
+
+last_fit_workflow <- function(object,
+                              split,
+                              metrics,
+                              eval_time = NULL,
+                              control,
+                              add_validation_set = FALSE,
+                              ...,
+                              call = rlang::caller_env()) {
+  rlang::check_dots_empty()
   check_no_tuning(object)
+
+  if (workflows::is_trained_workflow(object)) {
+    cli::cli_abort(
+      "`last_fit()` is not well-defined for a fitted workflow.",
+      call = call
+    )
+  }
+
   if (inherits(split, "initial_validation_split")) {
     split <- prepare_validation_split(split, add_validation_set)
   }
@@ -133,8 +204,10 @@ last_fit_workflow <- function(object, split, metrics, control, add_validation_se
     workflow = object,
     resamples = resamples,
     metrics = metrics,
+    eval_time = eval_time,
     control = control,
-    rng = rng
+    rng = rng,
+    call = call
   )
 
   res$.workflow <- res$.extracts[[1]][[1]]

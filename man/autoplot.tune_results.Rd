@@ -8,7 +8,9 @@
   object,
   type = c("marginals", "parameters", "performance"),
   metric = NULL,
+  eval_time = NULL,
   width = NULL,
+  call = rlang::current_env(),
   ...
 )
 }
@@ -21,10 +23,17 @@ of each predictor versus performance; see Details below), \code{"parameters"}
 versus iteration). The latter two choices are only used for \code{\link[=tune_bayes]{tune_bayes()}}.}
 
 \item{metric}{A character vector or \code{NULL} for which metric to plot. By
-default, all metrics will be shown via facets.}
+default, all metrics will be shown via facets. Possible options are
+the entries in \code{.metric} column of \code{collect_metrics(object)}.}
+
+\item{eval_time}{A numeric vector of time points where dynamic event time
+metrics should be chosen (e.g. the time-dependent ROC curve, etc). The
+values should be consistent with the values used to create \code{object}.}
 
 \item{width}{A number for the width of the confidence interval bars when
 \code{type = "performance"}. A value of zero prevents them from being shown.}
+
+\item{call}{The call to be displayed in warnings or errors.}
 
 \item{...}{For plots with a regular grid, this is passed to \code{format()} and is
 applied to a parameter used to color points. Otherwise, it is not used.}

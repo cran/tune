@@ -16,11 +16,11 @@ collect_predictions(x, ...)
 
 \method{collect_predictions}{default}(x, ...)
 
-\method{collect_predictions}{tune_results}(x, summarize = FALSE, parameters = NULL, ...)
+\method{collect_predictions}{tune_results}(x, ..., summarize = FALSE, parameters = NULL)
 
 collect_metrics(x, ...)
 
-\method{collect_metrics}{tune_results}(x, summarize = TRUE, ...)
+\method{collect_metrics}{tune_results}(x, ..., summarize = TRUE, type = c("long", "wide"))
 
 collect_notes(x, ...)
 
@@ -45,6 +45,12 @@ types, the method of summarizing predictions is detailed below.}
 used to filter the predicted values before processing. This tibble should
 only have columns for each tuning parameter identifier (e.g. \code{"my_param"}
 if \code{tune("my_param")} was used).}
+
+\item{type}{One of \code{"long"} (the default) or \code{"wide"}. When \code{type = "long"},
+output has columns \code{.metric} and one of \code{.estimate} or \code{mean}.
+\code{.estimate}/\code{mean} gives the values for the \code{.metric}. When \code{type = "wide"},
+each metric has its own column and the \code{n} and \code{std_err} columns are removed,
+if they exist.}
 }
 \value{
 A tibble. The column names depend on the results and the mode of the
@@ -53,10 +59,13 @@ model.
 For \code{\link[=collect_metrics]{collect_metrics()}} and \code{\link[=collect_predictions]{collect_predictions()}}, when unsummarized,
 there are columns for each tuning parameter (using the \code{id} from \code{\link[=tune]{tune()}},
 if any).
-\code{\link[=collect_metrics]{collect_metrics()}} also has columns \code{.metric}, and \code{.estimator}.  When the
-results are summarized, there are columns for \code{mean}, \code{n}, and \code{std_err}.
-When not summarized, the additional columns for the resampling identifier(s)
-and \code{.estimate}.
+
+\code{\link[=collect_metrics]{collect_metrics()}} also has columns \code{.metric}, and \code{.estimator} by default.
+For \code{\link[=collect_metrics]{collect_metrics()}} methods that have a \code{type} argument, supplying
+\code{type = "wide"} will pivot the output such that each metric has its own
+column. When the results are summarized, there are columns for \code{mean}, \code{n},
+and \code{std_err}. When not summarized, the additional columns for the resampling
+identifier(s) and \code{.estimate}.
 
 For \code{\link[=collect_predictions]{collect_predictions()}}, there are additional columns for the resampling
 identifier(s), columns for the predicted values (e.g., \code{.pred},
@@ -70,25 +79,50 @@ each row in the original training set has multiple holdout predictions
 training set same has a single predicted value, the results are averaged
 over replicate predictions.
 
-For regression cases, the numeric predictions are simply averaged. For
-classification models, the problem is more complex. When class probabilities
+For regression cases, the numeric predictions are simply averaged.
+
+For classification models, the problem is more complex. When class probabilities
 are used, these are averaged and then re-normalized to make sure that they
 add to one. If hard class predictions also exist in the data, then these are
 determined from the summarized probability estimates (so that they match).
 If only hard class predictions are in the results, then the mode is used to
 summarize.
 
+With censored outcome models, the predicted survival probabilities (if any)
+are averaged while the static predicted event times are summarized using the
+median.
+
 \code{\link[=collect_notes]{collect_notes()}} returns a tibble with columns for the resampling
 indicators, the location (preprocessor, model, etc.), type (error or warning),
 and the notes.
 
-\code{\link[=collect_extracts]{collect_extracts()}} returns a tibble with columns for the resampling
-indicators, the location (preprocessor, model, etc.), and objects extracted
-from workflows via the \code{extract} argument to \link[=control_grid]{control functions}.
+\code{\link[=collect_extracts]{collect_extracts()}} collects objects extracted from fitted workflows
+via the \code{extract} argument to \link[=control_grid]{control functions}. The
+function returns a tibble with columns for the resampling
+indicators, the location (preprocessor, model, etc.), and extracted objects.
 }
 \description{
 Obtain and format results produced by tuning functions
 }
+\section{Hyperparameters and extracted objects}{
+
+
+When making use of submodels, tune can generate predictions and calculate
+metrics for multiple model \code{.config}urations using only one model fit.
+However, this means that if a function was supplied to a
+\link[=control_grid]{control function's} \code{extract} argument, tune can only
+execute that extraction on the one model that was fitted. As a result,
+in the \code{collect_extracts()} output, tune opts to associate the
+extracted objects with the hyperparameter combination used to
+fit that one model workflow, rather than the hyperparameter
+combination of a submodel. In the output, this appears like
+a hyperparameter entry is recycled across many \code{.config}
+entries---this is intentional.
+
+See \url{https://parsnip.tidymodels.org/articles/Submodels.html} to learn
+more about submodels.
+}
+
 \examples{
 \dontshow{if (tune:::should_run_examples(suggests = "kknn")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 data("example_ames_knn")
@@ -127,7 +161,11 @@ resampled <-
 
 collect_predictions(resampled) \%>\% arrange(.row)
 collect_predictions(resampled, summarize = TRUE) \%>\% arrange(.row)
-collect_predictions(resampled, summarize = TRUE, grid[1, ]) \%>\% arrange(.row)
+collect_predictions(
+  resampled,
+  summarize = TRUE,
+  parameters = grid[1, ]
+) \%>\% arrange(.row)
 
 collect_extracts(resampled)
 \dontshow{\}) # examplesIf}

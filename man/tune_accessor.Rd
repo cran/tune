@@ -3,8 +3,11 @@
 \name{.get_tune_parameters}
 \alias{.get_tune_parameters}
 \alias{.get_tune_parameter_names}
+\alias{.get_extra_col_names}
 \alias{.get_tune_metrics}
 \alias{.get_tune_metric_names}
+\alias{.get_tune_eval_times}
+\alias{.get_tune_eval_time_target}
 \alias{.get_tune_outcome_names}
 \alias{.get_tune_workflow}
 \alias{.get_fingerprint.tune_results}
@@ -14,9 +17,15 @@
 
 .get_tune_parameter_names(x)
 
+.get_extra_col_names(x)
+
 .get_tune_metrics(x)
 
 .get_tune_metric_names(x)
+
+.get_tune_eval_times(x)
+
+.get_tune_eval_time_target(x)
 
 .get_tune_outcome_names(x)
 

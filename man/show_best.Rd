@@ -19,25 +19,32 @@ show_best(x, ...)
 
 \method{show_best}{default}(x, ...)
 
-\method{show_best}{tune_results}(x, metric = NULL, n = 5, ...)
+\method{show_best}{tune_results}(
+  x,
+  ...,
+  metric = NULL,
+  eval_time = NULL,
+  n = 5,
+  call = rlang::current_env()
+)
 
 select_best(x, ...)
 
 \method{select_best}{default}(x, ...)
 
-\method{select_best}{tune_results}(x, metric = NULL, ...)
+\method{select_best}{tune_results}(x, ..., metric = NULL, eval_time = NULL)
 
 select_by_pct_loss(x, ...)
 
 \method{select_by_pct_loss}{default}(x, ...)
 
-\method{select_by_pct_loss}{tune_results}(x, ..., metric = NULL, limit = 2)
+\method{select_by_pct_loss}{tune_results}(x, ..., metric = NULL, eval_time = NULL, limit = 2)
 
 select_by_one_std_err(x, ...)
 
 \method{select_by_one_std_err}{default}(x, ...)
 
-\method{select_by_one_std_err}{tune_results}(x, ..., metric = NULL)
+\method{select_by_one_std_err}{tune_results}(x, ..., metric = NULL, eval_time = NULL)
 }
 \arguments{
 \item{x}{The results of \code{\link[=tune_grid]{tune_grid()}} or \code{\link[=tune_bayes]{tune_bayes()}}.}
@@ -56,7 +63,14 @@ more details). Not required if a single metric exists in \code{x}. If there are
 multiple metric and none are given, the first in the metric set is used (and
 a warning is issued).}
 
+\item{eval_time}{A single numeric time point where dynamic event time
+metrics should be chosen (e.g., the time-dependent ROC curve, etc). The
+values should be consistent with the values used to create \code{x}. The \code{NULL}
+default will automatically use the first evaluation time used by \code{x}.}
+
 \item{n}{An integer for the number of top results/rows to return.}
+
+\item{call}{The call to be shown in errors and warnings.}
 
 \item{limit}{The limit of loss of performance that is acceptable (in percent
 units). See details below.}
@@ -67,8 +81,7 @@ includes columns for performance metrics.
 }
 \description{
 \code{\link[=show_best]{show_best()}} displays the top sub-models and their performance estimates.
-}
-\details{
+
 \code{\link[=select_best]{select_best()}} finds the tuning parameter combination with the best
 performance values.
 
@@ -78,7 +91,8 @@ error of the numerically optimal results.
 
 \code{\link[=select_by_pct_loss]{select_by_pct_loss()}} selects the most simple model whose loss of
 performance is within some acceptable limit.
-
+}
+\details{
 For percent loss, suppose the best model has an RMSE of 0.75 and a simpler
 model has an RMSE of 1. The percent loss would be \code{(1.00 - 0.75)/1.00 * 100},
 or 25 percent. Note that loss will always be non-negative.

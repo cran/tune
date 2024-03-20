@@ -6,16 +6,19 @@
 #' model+recipe or model+formula combination across many resamples.
 #'
 #' @inheritParams last_fit
+#' @inheritParams tune_grid
 #'
-#' @param resamples A resample `rset` created from an `rsample` function such
-#'   as [rsample::vfold_cv()].
+#' @param resamples An `rset` resampling object created from an `rsample`
+#' function, such as [rsample::vfold_cv()].
 #'
 #' @param control A [control_resamples()] object used to fine tune the resampling
 #'   process.
-#'
+#' 
 #' @inheritSection tune_grid Performance Metrics
 #' @inheritSection tune_grid Obtaining Predictions
 #' @inheritSection tune_grid Extracting Information
+#' @template case-weights
+#' @template censored-regression
 #' @seealso [control_resamples()], [collect_predictions()], [collect_metrics()]
 #' @examplesIf tune:::should_run_examples()
 #' library(recipes)
@@ -71,6 +74,7 @@ fit_resamples.model_spec <- function(object,
                                      resamples,
                                      ...,
                                      metrics = NULL,
+                                     eval_time = NULL,
                                      control = control_resamples()) {
   if (rlang::is_missing(preprocessor) || !is_preprocessor(preprocessor)) {
     rlang::abort(paste(
@@ -95,6 +99,7 @@ fit_resamples.model_spec <- function(object,
     wflow,
     resamples = resamples,
     metrics = metrics,
+    eval_time = eval_time,
     control = control
   )
 }
@@ -106,6 +111,7 @@ fit_resamples.workflow <- function(object,
                                    resamples,
                                    ...,
                                    metrics = NULL,
+                                   eval_time = NULL,
                                    control = control_resamples()) {
   empty_ellipses(...)
 
@@ -116,6 +122,7 @@ fit_resamples.workflow <- function(object,
       workflow = object,
       resamples = resamples,
       metrics = metrics,
+      eval_time = eval_time,
       control = control,
       rng = TRUE
     )
@@ -125,7 +132,8 @@ fit_resamples.workflow <- function(object,
 
 # ------------------------------------------------------------------------------
 
-resample_workflow <- function(workflow, resamples, metrics, control, rng) {
+resample_workflow <- function(workflow, resamples, metrics, eval_time = NULL, 
+                              control, rng, call = caller_env()) {
   check_no_tuning(workflow)
 
   # `NULL` is the signal that we have no grid to tune with
@@ -137,9 +145,11 @@ resample_workflow <- function(workflow, resamples, metrics, control, rng) {
     resamples = resamples,
     grid = grid,
     metrics = metrics,
+    eval_time = eval_time,
     pset = pset,
     control = control,
-    rng = rng
+    rng = rng,
+    call = call
   )
 
   attributes <- attributes(out)
@@ -148,6 +158,8 @@ resample_workflow <- function(workflow, resamples, metrics, control, rng) {
     x = out,
     parameters = attributes$parameters,
     metrics = attributes$metrics,
+    eval_time = attributes$eval_time,
+    eval_time_target = NULL,
     outcomes = attributes$outcomes,
     rset_info = attributes$rset_info,
     workflow = attributes$workflow
