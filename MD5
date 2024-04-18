@@ -1,7 +1,7 @@
-8d9ce7167f4ce08f05a314ab0ec10140 *DESCRIPTION
+f7644bd61e23c5e0b2dbe589403eefe1 *DESCRIPTION
 2713734426cb76865d2a125fd2719781 *LICENSE
 dbab50db771c1349ce86581bec16621f *NAMESPACE
-7e54732fa0dcb80c09ad8b93a8955e5c *NEWS.md
+782eac6f9ccbe5f925590108387ad530 *NEWS.md
 dfe65835180a2fe6933ae627c3cfff06 *R/0_imports.R
 3482a8e184a611fc33d8a10d366406d2 *R/acquisition.R
 8d09374aff0702429ad468736f0686a9 *R/augment.R
@@ -21,11 +21,11 @@ ca003baad30f9272c53f81b64fea8cec *R/expo_decay.R
 c6c10b0ff548d4552bc93876c3e34b16 *R/filter_parameters.R
 22509340d6d24adc99310cc7630476dd *R/finalize.R
 6335740d159435404d7893d2df906991 *R/fit_best.R
-a470f6d8839acef34cd36e403f0d761e *R/grid_code_paths.R
+eca34c7fba0f6bb580d25486a1019e36 *R/grid_code_paths.R
 0b9c92b02ef7c08b06f355a8a0191445 *R/grid_helpers.R
 0c82c0de868df7c7ccd7a5cfada17dbd *R/grid_performance.R
 fb62e0e0412a8ded1bd5355b1de7d244 *R/handlers.R
-28a5f49b4167b7a256022afa1454697b *R/int_pctl.R
+0da87d58ebef4d49210562bd51d8060b *R/int_pctl.R
 2af0c758abad293a826a70498b149e36 *R/iteration_results.R
 42ade120424efcc50a30db0c2f0c9ec2 *R/last_fit.R
 7ac948c0e27c6c0aa82d1766cc2253ee *R/load_ns.R
@@ -51,7 +51,7 @@ e6c4096c61e9b4ee3c8fa103c4372f18 *R/symbol.R
 c33c658cc2c208e03187d3b2edf95095 *R/tune_results.R
 506885599b9f4b2879917c9427d96969 *R/utils.R
 e6fd2072473cf74258c3aff1667688cd *R/zzz.R
-1524c13daa49a912bc73dd8f7363e8e9 *README.md
+aded1f47d7d19aac67623abfae77504b *README.md
 f74fa76c6927412939b10ed335b7b7ed *data/datalist
 cc8b27e7f1b32a33f0f81622f1535d50 *data/example_ames_knn.RData
 7aa456bfde475e6da1785f26ff8679bc *inst/WORDLIST
@@ -101,7 +101,7 @@ f5d49d551a6e291413d3953f6450a081 *man/tune_accessor.Rd
 c649692a895296403ec82189f16e3ea6 *man/tune_grid.Rd
 50f330eeca8db092d6807e04457bd06d *tests/spelling.R
 6da278e70421d0118d1c04110c0341c1 *tests/testthat.R
-12026e4d9dc773819d84da26cfec0774 *tests/testthat/Rplots.pdf
+acd99b3ccfc5c2592c70a7752c2ff78e *tests/testthat/Rplots.pdf
 23b9fd0d2e2630695be44e769a7f4c6b *tests/testthat/_snaps/acquisition.md
 66e0c601c24e0771cc3591fa6cb31b4b *tests/testthat/_snaps/augment.md
 563dc349a5cebe68b233c5bae04f5e32 *tests/testthat/_snaps/autoplot.md

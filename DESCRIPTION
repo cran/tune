@@ -1,6 +1,6 @@
 Package: tune
 Title: Tidy Tuning Tools
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: c(
     person("Max", "Kuhn", , "max@posit.co", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-2402-136X")),
@@ -32,9 +32,9 @@ Language: en-US
 LazyData: true
 RoxygenNote: 7.3.1
 NeedsCompilation: no
-Packaged: 2024-03-20 12:08:23 UTC; max
+Packaged: 2024-04-18 19:37:29 UTC; max
 Author: Max Kuhn [aut, cre] (<https://orcid.org/0000-0003-2402-136X>),
   Posit Software, PBC [cph, fnd]
 Maintainer: Max Kuhn <max@posit.co>
 Repository: CRAN
-Date/Publication: 2024-03-20 18:50:02 UTC
+Date/Publication: 2024-04-18 20:20:03 UTC
