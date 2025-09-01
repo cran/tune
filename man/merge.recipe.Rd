@@ -26,15 +26,15 @@ A tibble with a column \code{x} that has as many rows as were in \code{y}.
 \pkg{parsnip} model or recipe.
 }
 \examples{
-\dontshow{if (tune:::should_run_examples(suggests = c("xgboost", "modeldata"))) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (tune:::should_run_examples(suggests = c("xgboost", "modeldata", "splines2"))) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(tibble)
 library(recipes)
 library(parsnip)
 library(dials)
 
 pca_rec <-
-  recipe(mpg ~ ., data = mtcars) \%>\%
-  step_impute_knn(all_predictors(), neighbors = tune()) \%>\%
+  recipe(mpg ~ ., data = mtcars) |>
+  step_impute_knn(all_predictors(), neighbors = tune()) |>
   step_pca(all_predictors(), num_comp = tune())
 
 pca_grid <-
@@ -49,9 +49,9 @@ pca_grid <-
 merge(pca_rec, pca_grid)
 
 spline_rec <-
-  recipe(mpg ~ ., data = mtcars) \%>\%
-  step_ns(disp, deg_free = tune("disp df")) \%>\%
-  step_ns(wt, deg_free = tune("wt df"))
+  recipe(mpg ~ ., data = mtcars) |>
+  step_spline_natural(disp, deg_free = tune("disp df")) |>
+  step_spline_natural(wt, deg_free = tune("wt df"))
 
 spline_grid <-
   tribble(
@@ -67,13 +67,13 @@ merge(pca_rec, pca_grid)
 data(hpc_data, package = "modeldata")
 
 xgb_mod <-
-  boost_tree(trees = tune(), min_n = tune()) \%>\%
+  boost_tree(trees = tune(), min_n = tune()) |>
   set_engine("xgboost")
 
 set.seed(254)
 xgb_grid <-
-  extract_parameter_set_dials(xgb_mod) \%>\%
-  finalize(hpc_data) \%>\%
+  extract_parameter_set_dials(xgb_mod) |>
+  finalize(hpc_data) |>
   grid_max_entropy(size = 3)
 
 merge(xgb_mod, xgb_grid)

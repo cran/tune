@@ -45,7 +45,9 @@
 #' description section.
 #'
 #' @name extract-tune
-#' @examples
+#' @examplesIf rlang::is_installed("splines2")
+#' # example code
+#'
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
@@ -53,10 +55,10 @@
 #' set.seed(6735)
 #' tr_te_split <- initial_split(mtcars)
 #'
-#' spline_rec <- recipe(mpg ~ ., data = mtcars) %>%
-#'   step_ns(disp)
+#' spline_rec <- recipe(mpg ~ ., data = mtcars) |>
+#'   step_spline_natural(disp)
 #'
-#' lin_mod <- linear_reg() %>%
+#' lin_mod <- linear_reg() |>
 #'   set_engine("lm")
 #'
 #' spline_res <- last_fit(lin_mod, spline_rec, split = tr_te_split)
@@ -107,18 +109,19 @@ extract_spec_parsnip.tune_results <- function(x, ...) {
 #' @rdname extract-tune
 extract_recipe.tune_results <- function(x, ..., estimated = TRUE) {
   check_empty_dots(...)
-  if (!rlang::is_bool(estimated)) {
-    rlang::abort("`estimated` must be a single `TRUE` or `FALSE`.")
-  }
+  check_bool(estimated)
   extract_recipe(extract_workflow(x), estimated = estimated)
 }
 check_empty_dots <- function(...) {
   opts <- list(...)
   if (any(names(opts) == "estimated")) {
-    rlang::abort("'estimated' should be a named argument.")
+    cli::cli_abort("'{.arg estimated}' should be a named argument.")
   }
   if (length(opts) > 0) {
-    rlang::abort("'...' are not used in this function.")
+    cli::cli_warn(
+      "The {.code ...} are not used in this function but {length(opts)}
+       object{?s} {?was/were} passed: {.val {names(opts)}}"
+    )
   }
   invisible(NULL)
 }

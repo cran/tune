@@ -83,7 +83,7 @@
 #' See \url{https://parsnip.tidymodels.org/articles/Submodels.html} to learn
 #' more about submodels.
 #'
-#' @examplesIf tune:::should_run_examples(suggests = "kknn")
+#' @examplesIf tune:::should_run_examples(suggests = c("kknn", "splines2"))
 #' data("example_ames_knn")
 #' # The parameters for the model:
 #' extract_parameter_set_dials(ames_wflow)
@@ -103,28 +103,28 @@
 #' library(recipes)
 #' library(tibble)
 #'
-#' lm_mod <- linear_reg() %>% set_engine("lm")
+#' lm_mod <- linear_reg() |> set_engine("lm")
 #' set.seed(93599150)
 #' car_folds <- vfold_cv(mtcars, v = 2, repeats = 3)
 #' ctrl <- control_resamples(save_pred = TRUE, extract = extract_fit_engine)
 #'
 #' spline_rec <-
-#'   recipe(mpg ~ ., data = mtcars) %>%
-#'   step_ns(disp, deg_free = tune("df"))
+#'   recipe(mpg ~ ., data = mtcars) |>
+#'   step_spline_natural(disp, deg_free = tune("df"))
 #'
 #' grid <- tibble(df = 3:6)
 #'
 #' resampled <-
-#'   lm_mod %>%
+#'   lm_mod |>
 #'   tune_grid(spline_rec, resamples = car_folds, control = ctrl, grid = grid)
 #'
-#' collect_predictions(resampled) %>% arrange(.row)
-#' collect_predictions(resampled, summarize = TRUE) %>% arrange(.row)
+#' collect_predictions(resampled) |> arrange(.row)
+#' collect_predictions(resampled, summarize = TRUE) |> arrange(.row)
 #' collect_predictions(
 #'   resampled,
 #'   summarize = TRUE,
 #'   parameters = grid[1, ]
-#' ) %>% arrange(.row)
+#' ) |> arrange(.row)
 #'
 #' collect_extracts(resampled)
 #'
@@ -143,7 +143,12 @@ collect_predictions.default <- function(x, ...) {
 
 #' @export
 #' @rdname collect_predictions
-collect_predictions.tune_results <- function(x, ..., summarize = FALSE, parameters = NULL) {
+collect_predictions.tune_results <- function(
+  x,
+  ...,
+  summarize = FALSE,
+  parameters = NULL
+) {
   rlang::check_dots_empty()
 
   names <- colnames(x)
@@ -152,12 +157,10 @@ collect_predictions.tune_results <- function(x, ..., summarize = FALSE, paramete
   has_coll_col <- coll_col %in% names
 
   if (!has_coll_col) {
-    msg <- paste0(
-      "The `.predictions` column does not exist. ",
-      "Refit with the control argument `save_pred = TRUE` to save predictions."
+    cli::cli_abort(
+      "The {.field .predictions} column does not exist. Please refit with the
+      control argument {.code save_pred = TRUE} to save predictions."
     )
-
-    rlang::abort(msg)
   }
 
   x <- filter_predictions(x, parameters)
@@ -168,13 +171,9 @@ collect_predictions.tune_results <- function(x, ..., summarize = FALSE, paramete
     x <- collector(x, coll_col = coll_col)
   }
 
-  x <- dplyr::relocate(
-    x,
-    dplyr::any_of(".pred"), dplyr::any_of(".pred_class"),
-    dplyr::any_of(".pred_time"), dplyr::starts_with(".pred")
-  )
-
-  x
+  param_names <- .get_tune_parameter_names(x)
+  y_name <- .get_tune_outcome_names(x)
+  reorder_pred_cols(x, y_name, param_names)
 }
 
 filter_predictions <- function(x, parameters) {
@@ -183,17 +182,9 @@ filter_predictions <- function(x, parameters) {
   }
   params <- attr(x, "parameters")
   if (is.null(params)) {
-    rlang::warn(
-      paste(
-        strwrap(
-          paste(
-            "The object is missing some attributes; it is probably from",
-            "an earlier version of `tune`. The predictions can't be filtered."
-          ),
-          prefix = ""
-        ),
-        collapse = "\n"
-      )
+    cli::cli_warn(
+      "The object is missing some attributes; it is probably from an earlier
+       version of {.pkg tune}. The predictions can't be filtered."
     )
 
     return(x)
@@ -202,11 +193,9 @@ filter_predictions <- function(x, parameters) {
   param_names <- params$id
   parameters <- dplyr::select(parameters, dplyr::any_of(param_names))
   if (ncol(parameters) != length(param_names)) {
-    rlang::abort(
-      paste0(
-        "`parameters` should only have columns: ",
-        paste0("'", param_names, "'", collapse = ", ")
-      )
+    cli::cli_abort(
+      "{.arg parameters} should only have columns:
+                    {.val {param_names}}."
     )
   }
   x$.predictions <-
@@ -228,8 +217,8 @@ numeric_summarize <- function(x) {
   nms <- names(x)
   group_cols <- nms[!(nms %in% pred_cols)]
   x <-
-    x %>%
-    dplyr::group_by(!!!rlang::syms(group_cols)) %>%
+    x |>
+    dplyr::group_by(!!!rlang::syms(group_cols)) |>
     dplyr::summarise(
       dplyr::across(dplyr::starts_with(".pred"), mean_na_rm)
     )
@@ -249,38 +238,39 @@ prob_summarize <- function(x, p) {
   }
 
   nms <- names(x)
-  y_cols <- nms[!(nms %in% c(".row", ".iter", ".config", ".eval_time", pred_cols, p))]
+  y_cols <- nms[
+    !(nms %in% c(".row", ".iter", ".config", ".eval_time", pred_cols, p))
+  ]
   group_cols <- nms[!(nms %in% pred_cols)]
 
   x <-
-    x %>%
-    dplyr::group_by(!!!rlang::syms(group_cols)) %>%
+    x |>
+    dplyr::group_by(!!!rlang::syms(group_cols)) |>
     dplyr::summarise(
       dplyr::across(dplyr::starts_with(".pred_"), mean_na_rm)
-    ) %>%
+    ) |>
     ungroup()
 
   # In case the class probabilities do not add up to 1 after averaging
   group_cols <- group_cols[group_cols != y_cols]
   totals <-
-    x %>%
-    dplyr::select(-dplyr::all_of(y_cols)) %>%
+    x |>
+    dplyr::select(-dplyr::all_of(y_cols)) |>
     tidyr::pivot_longer(
       cols = c(dplyr::all_of(pred_cols)),
       names_to = ".column",
       values_to = ".value"
-    ) %>%
-    dplyr::group_by(!!!rlang::syms(group_cols)) %>%
-    dplyr::summarize(.totals = sum(.value)) %>%
+    ) |>
+    dplyr::group_by(!!!rlang::syms(group_cols)) |>
+    dplyr::summarize(.totals = sum(.value)) |>
     dplyr::ungroup()
 
   x <-
-    x %>%
-    dplyr::full_join(totals, by = group_cols) %>%
+    x |>
+    dplyr::full_join(totals, by = group_cols) |>
     dplyr::mutate(
-      dplyr::across(dplyr::starts_with(".pred_"),
-      ~ .x / .totals
-    )) %>%
+      dplyr::across(dplyr::starts_with(".pred_"), ~ .x / .totals)
+    ) |>
     dplyr::select(-.totals)
 
   # If we started with hard class predictions, recompute them based on the
@@ -289,21 +279,21 @@ prob_summarize <- function(x, p) {
     lvl <- levels(x[[y_cols]])
     ord <- is.ordered(x[[y_cols]])
     class_pred <-
-      x %>%
-      dplyr::select(-dplyr::all_of(y_cols)) %>%
+      x |>
+      dplyr::select(-dplyr::all_of(y_cols)) |>
       tidyr::pivot_longer(
         cols = c(dplyr::all_of(pred_cols)),
         names_to = ".column",
         values_to = ".value"
-      ) %>%
-      dplyr::group_by(!!!rlang::syms(group_cols)) %>%
-      dplyr::arrange(dplyr::desc(.value), .by_group = TRUE) %>%
-      dplyr::slice(1) %>%
+      ) |>
+      dplyr::group_by(!!!rlang::syms(group_cols)) |>
+      dplyr::arrange(dplyr::desc(.value), .by_group = TRUE) |>
+      dplyr::slice(1) |>
       dplyr::mutate(
         .pred_class = gsub("\\.pred_", "", .column),
         .pred_class = factor(.pred_class, levels = lvl, ordered = ord)
-      ) %>%
-      dplyr::ungroup() %>%
+      ) |>
+      dplyr::ungroup() |>
       dplyr::select(-.value, -.column)
     x <- full_join(x, class_pred, by = group_cols)
   }
@@ -322,12 +312,12 @@ class_summarize <- function(x, p) {
   group_cols <- nms[!(nms %in% pred_cols)]
   outcome_col <- group_cols[!(group_cols %in% c(p, ".row", ".iter", ".config"))]
   x <-
-    x %>%
-    dplyr::group_by(!!!rlang::syms(group_cols)) %>%
-    dplyr::count(.pred_class) %>%
-    dplyr::arrange(dplyr::desc(n), .by_group = TRUE) %>%
-    dplyr::slice(1) %>%
-    dplyr::ungroup() %>%
+    x |>
+    dplyr::group_by(!!!rlang::syms(group_cols)) |>
+    dplyr::count(.pred_class) |>
+    dplyr::arrange(dplyr::desc(n), .by_group = TRUE) |>
+    dplyr::slice(1) |>
+    dplyr::ungroup() |>
     dplyr::select(-n)
   x
 }
@@ -336,7 +326,7 @@ surv_summarize <- function(x, param, y) {
   pred_cols <- grep("^\\.pred", names(x), value = TRUE)
   nms <- names(x)
 
-  outcomes <- x[, c(".row", y)] %>% dplyr::slice(1, .by = .row)
+  outcomes <- x[, c(".row", y)] |> dplyr::slice(1, .by = .row)
 
   res <- NULL
 
@@ -354,13 +344,15 @@ surv_summarize <- function(x, param, y) {
   if (any(pred_cols == ".pred")) {
     nest_cols <- c(".eval_time", ".pred_survival", ".weight_censored")
     tmp <-
-      x %>%
-      dplyr::select(.pred,
-                    .config,
-                    .row,
-                    dplyr::any_of(param),
-                    dplyr::any_of(".iter")) %>%
-      tidyr::unnest(.pred) %>%
+      x |>
+      dplyr::select(
+        .pred,
+        .config,
+        .row,
+        dplyr::any_of(param),
+        dplyr::any_of(".iter")
+      ) |>
+      tidyr::unnest(.pred) |>
       dplyr::summarize(
         .pred_survival = mean(.pred_survival, na.rm = TRUE),
         .weight_censored = mean(.weight_censored, na.rm = TRUE),
@@ -371,12 +363,10 @@ surv_summarize <- function(x, param, y) {
           dplyr::any_of(param),
           dplyr::any_of(".iter")
         )
-      ) %>%
+      ) |>
       tidyr::nest(
         .pred = c(dplyr::all_of(nest_cols)),
-        .by = c(.row, .config,
-                dplyr::any_of(param),
-                dplyr::any_of(".iter"))
+        .by = c(.row, .config, dplyr::any_of(param), dplyr::any_of(".iter"))
       )
 
     if (!is.null(res)) {
@@ -400,11 +390,8 @@ average_predictions <- function(x, grid = NULL) {
   if (!is.null(grid)) {
     grid <- dplyr::select(grid, dplyr::all_of(param_names))
     if (ncol(grid) != length(param_names)) {
-      rlang::abort(
-        paste0(
-          "`grid` should only have columns: ",
-          paste0("'", param_names, "'", collapse = ", ")
-        )
+      cli::cli_abort(
+        "{.arg grid} should only have columns: {.val {param_names}}."
       )
     }
     x$.predictions <-
@@ -412,8 +399,8 @@ average_predictions <- function(x, grid = NULL) {
   }
 
   x <-
-    x %>%
-    collect_predictions() %>%
+    x |>
+    collect_predictions() |>
     dplyr::select(-starts_with("id"))
 
   if (all(metric_types == "numeric")) {
@@ -429,11 +416,9 @@ average_predictions <- function(x, grid = NULL) {
   } else if (any(metric_types %in% c("survival", "time"))) {
     x <- surv_summarize(x, param_names, y_nms)
   } else {
-    msg <- paste(
-      "We don't know about metrics of type:",
-      paste(unique(metric_types), collapse = ", ")
+    cli::cli_abort(
+      "We don't know about metrics of type: {.val {unique(metric_types)}}."
     )
-    rlang::abort(msg)
   }
 
   if (dplyr::is_grouped_df(x)) {
@@ -460,7 +445,12 @@ collect_metrics.default <- function(x, ...) {
 
 #' @export
 #' @rdname collect_predictions
-collect_metrics.tune_results <- function(x, ..., summarize = TRUE, type = c("long", "wide")) {
+collect_metrics.tune_results <- function(
+  x,
+  ...,
+  summarize = TRUE,
+  type = c("long", "wide")
+) {
   rlang::check_dots_empty()
   rlang::arg_match0(type, values = c("long", "wide"))
 
@@ -547,7 +537,10 @@ collector <- function(x, coll_col = ".predictions") {
 
   if (rlang::has_name(x, ".iter")) {
     iter <- x[[".iter"]]
-    out[[".iter"]] <- vctrs::vec_rep_each(iter, times = vctrs::list_sizes(metrics))
+    out[[".iter"]] <- vctrs::vec_rep_each(
+      iter,
+      times = vctrs::list_sizes(metrics)
+    )
   }
 
   out <- vctrs::vec_unique(out)
@@ -566,7 +559,10 @@ estimate_tune_results <- function(x, ..., col_name = ".metrics") {
 
   all_bad <- is_cataclysmic(x)
   if (all_bad) {
-    rlang::abort("All models failed. Run `show_notes(.Last.tune.result)` for more information.")
+    cli::cli_abort(
+      "All models failed. Run {.code show_notes(.Last.tune.result)} for more
+       information."
+    )
   }
 
   # The mapping of tuning parameters and .config.
@@ -606,11 +602,15 @@ estimate_tune_results <- function(x, ..., col_name = ".metrics") {
     x <- dplyr::distinct(x)
   }
 
-  x <- x %>%
-    tibble::as_tibble() %>%
-    vctrs::vec_slice(., .$id != "Apparent") %>%
-    dplyr::group_by(!!!rlang::syms(param_names), .metric, .estimator,
-                    !!!rlang::syms(group_cols)) %>%
+  x <- tibble::as_tibble(x)
+  x <- vctrs::vec_slice(x, x$id != "Apparent")
+  x <- x |>
+    dplyr::group_by(
+      !!!rlang::syms(param_names),
+      .metric,
+      .estimator,
+      !!!rlang::syms(group_cols)
+    ) |>
     dplyr::summarize(
       mean = mean(.estimate, na.rm = TRUE),
       n = sum(!is.na(.estimate)),
@@ -620,10 +620,10 @@ estimate_tune_results <- function(x, ..., col_name = ".metrics") {
 
   # only join when parameters are being tuned (#600)
   if (length(param_names) == 0) {
-    x <- x %>%
+    x <- x |>
       dplyr::bind_cols(config_key)
   } else {
-    x <- x %>%
+    x <- x |>
       dplyr::full_join(config_key, by = param_names)
   }
 
@@ -653,8 +653,8 @@ collect_notes.tune_results <- function(x, ...) {
     return(x$.notes[[1]])
   }
 
-  x %>%
-    dplyr::select(dplyr::starts_with("id"), dplyr::any_of(".iter"), .notes) %>%
+  x |>
+    dplyr::select(dplyr::starts_with("id"), dplyr::any_of(".iter"), .notes) |>
     tidyr::unnest(cols = .notes)
 }
 
@@ -684,8 +684,11 @@ collect_extracts.tune_results <- function(x, ...) {
     ))
   }
 
-  x %>%
-    dplyr::select(dplyr::starts_with("id"), dplyr::any_of(".iter"), .extracts) %>%
+  x |>
+    dplyr::select(
+      dplyr::starts_with("id"),
+      dplyr::any_of(".iter"),
+      .extracts
+    ) |>
     tidyr::unnest(cols = .extracts)
 }
-

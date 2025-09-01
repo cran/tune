@@ -1,5 +1,3 @@
-
-
 CoordObsPred <-
   ggplot2::ggproto(
     "CoordObsPred",
@@ -13,7 +11,11 @@ CoordObsPred <-
       )
       self$limits$y <- rngs
       self$limits$x <- rngs
-      ggplot2::ggproto_parent(ggplot2::CoordFixed, self)$setup_panel_params(scale_x, scale_y, params)
+      ggplot2::ggproto_parent(ggplot2::CoordFixed, self)$setup_panel_params(
+        scale_x,
+        scale_y,
+        params
+      )
     },
     aspect = function(self, ranges) {
       1 / self$ratio
@@ -36,7 +38,8 @@ CoordObsPred <-
 #' may show up in places such as the axes, the legend, the plot title, or the
 #' plot margins.
 #' @return A `ggproto` object.
-#' @examples
+#' @examplesIf rlang::is_installed("modeldata")
+#' # example code
 #' data(solubility_test, package = "modeldata")
 #'
 #' library(ggplot2)
@@ -51,11 +54,7 @@ CoordObsPred <-
 #' p + coord_obs_pred()
 #' @export
 coord_obs_pred <-
-  function(ratio = 1,
-           xlim = NULL,
-           ylim = NULL,
-           expand = TRUE,
-           clip = "on") {
+  function(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") {
     ggplot2::ggproto(
       NULL,
       CoordObsPred,

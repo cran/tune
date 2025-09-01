@@ -13,8 +13,8 @@
 #' a column for each tuning parameter. This tibble should have columns for each
 #' tuning parameter identifier (e.g. `"my_param"` if `tune("my_param")` was used).
 #' If `NULL`, this argument will be set to
-#' [`select_best(metric, eval_time)`][tune::select_best.tune_results]. 
-#' If not `NULL`, `parameters` overwrites the specification via `metric`, and 
+#' [`select_best(metric, eval_time)`][tune::select_best.tune_results].
+#' If not `NULL`, `parameters` overwrites the specification via `metric`, and
 #' `eval_time`.
 #' @param verbose A logical for printing logging.
 #' @param add_validation_set When the resamples embedded in `x` are a split into
@@ -37,14 +37,14 @@
 #'
 #' @inheritSection last_fit See also
 #'
-#' @examplesIf tune:::should_run_examples()
+#' @examplesIf tune:::should_run_examples() && rlang::is_installed("modeldata") && !tune:::is_cran_check()
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
 #' library(dplyr)
 #'
 #' data(meats, package = "modeldata")
-#' meats <- meats %>% select(-water, -fat)
+#' meats <- meats |> select(-water, -fat)
 #'
 #' set.seed(1)
 #' meat_split <- initial_split(meats)
@@ -55,11 +55,11 @@
 #' meat_rs <- vfold_cv(meat_train, v = 10)
 #'
 #' pca_rec <-
-#'   recipe(protein ~ ., data = meat_train) %>%
-#'   step_normalize(all_numeric_predictors()) %>%
+#'   recipe(protein ~ ., data = meat_train) |>
+#'   step_normalize(all_numeric_predictors()) |>
 #'   step_pca(all_numeric_predictors(), num_comp = tune())
 #'
-#' knn_mod <- nearest_neighbor(neighbors = tune()) %>% set_mode("regression")
+#' knn_mod <- nearest_neighbor(neighbors = tune()) |> set_mode("regression")
 #'
 #' ctrl <- control_grid(save_workflow = TRUE)
 #'
@@ -78,26 +78,28 @@ fit_best <- function(x, ...) {
 #' @export
 #' @rdname fit_best
 fit_best.default <- function(x, ...) {
-  cls <- class(x)
   cli::cli_abort(
-    "There is no `fit_best()` method for an object with \\
-     {cli::qty(cls)} class{?es} {.var {cls}}."
+    "No {.fn fit_best} exists for {.obj_type_friendly {x}}."
   )
 }
 
 #' @export
 #' @rdname fit_best
-fit_best.tune_results <- function(x,
-                                  ...,
-                                  metric = NULL,
-                                  eval_time = NULL,
-                                  parameters = NULL,
-                                  verbose = FALSE,
-                                  add_validation_set = NULL) {
+fit_best.tune_results <- function(
+  x,
+  ...,
+  metric = NULL,
+  eval_time = NULL,
+  parameters = NULL,
+  verbose = FALSE,
+  add_validation_set = NULL
+) {
   rlang::check_dots_empty()
   wflow <- .get_tune_workflow(x)
   if (is.null(wflow)) {
-    cli::cli_abort(c("x" = "The control option `save_workflow = TRUE` should be used when tuning."))
+    cli::cli_abort(c(
+      "x" = "The control option `save_workflow = TRUE` should be used when tuning."
+    ))
   }
 
   if (is.null(parameters)) {
@@ -119,12 +121,16 @@ fit_best.tune_results <- function(x,
     }
   } else {
     if (!is.null(metric)) {
-      cli::cli_warn("{.arg metric} is being ignored because {.arg parameters}
-      has been specified.")
+      cli::cli_warn(
+        "{.arg metric} is being ignored because {.arg parameters}
+      has been specified."
+      )
     }
     if (!is.null(eval_time)) {
-      cli::cli_warn("{.arg eval_time} is being ignored because {.arg parameters}
-      has been specified.")
+      cli::cli_warn(
+        "{.arg eval_time} is being ignored because {.arg parameters}
+      has been specified."
+      )
     }
   }
 
@@ -162,8 +168,9 @@ fit_best.tune_results <- function(x,
     }
   } else {
     if (!is.null(add_validation_set)) {
-      rlang::warn(
-        "The option `add_validation_set` is being ignored because the resampling object does not include a validation set."
+      cli::cli_warn(
+        "The option {.arg add_validation_set} is being ignored because the
+         resampling object does not include a validation set."
       )
     }
     dat <- x$splits[[1]]$data
@@ -193,4 +200,3 @@ format_final_param <- function(x, metric) {
   cat("\n\n")
   invisible(x)
 }
-

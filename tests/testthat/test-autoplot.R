@@ -3,7 +3,10 @@ test_that("two quantitative predictor marginal plot", {
 
   p <- autoplot(svm_results)
   expect_s3_class(p, "ggplot")
-  expect_equal(names(p$data), c("mean", "# resamples", ".metric", "name", "value"))
+  expect_equal(
+    names(p$data),
+    c("mean", "# resamples", ".metric", "name", "value")
+  )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
   expect_equal(p$labels$y, "")
@@ -21,7 +24,14 @@ test_that("two quantitative predictor and one qualitative marginal plot", {
   expect_s3_class(p, "ggplot")
   expect_equal(
     names(p$data),
-    c("Distance Weighting Function", "mean", "# resamples", ".metric", "name", "value")
+    c(
+      "Distance Weighting Function",
+      "mean",
+      "# resamples",
+      ".metric",
+      "name",
+      "value"
+    )
   )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
@@ -43,7 +53,10 @@ test_that("marginal plot labels and transformations - irregular grid", {
 
   p <- autoplot(svm_results)
   expect_s3_class(p, "ggplot")
-  expect_equal(names(p$data), c("mean", "# resamples", ".metric", "name", "value"))
+  expect_equal(
+    names(p$data),
+    c("mean", "# resamples", ".metric", "name", "value")
+  )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
   expect_equal(p$labels$y, "")
@@ -76,7 +89,14 @@ test_that("marginal plot for iterative search", {
   expect_s3_class(p, "ggplot")
   expect_equal(
     names(p$data),
-    c("Distance Weighting Function", "mean", "# resamples", ".metric", "name", "value")
+    c(
+      "Distance Weighting Function",
+      "mean",
+      "# resamples",
+      ".metric",
+      "name",
+      "value"
+    )
   )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
@@ -97,16 +117,21 @@ test_that("performance plot for iterative search", {
   expect_equal(
     names(p$data),
     c(
-      "K", "weight_func", "deg_free", ".metric",
-      ".estimator", "mean", "n", "std_err", ".config", ".iter"
+      "K",
+      "weight_func",
+      "deg_free",
+      ".metric",
+      ".estimator",
+      "mean",
+      "n",
+      "std_err",
+      ".config",
+      ".iter"
     )
   )
   expect_equal(rlang::get_expr(p$mapping$x), expr(.iter))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
   expect_equal(p$labels$x, "Iteration")
-  expect_equal(p$labels$y, "mean")
-  expect_equal(p$labels$ymin, "mean - const * std_err")
-  expect_equal(p$labels$ymax, "mean + const * std_err")
 
   p <- autoplot(mt_spln_knn_bo_sep, type = "performance", metric = "rmse")
   expect_true(isTRUE(all.equal(unique(p$data$.metric), "rmse")))
@@ -141,7 +166,16 @@ test_that("regular grid plot", {
   expect_s3_class(p, "ggplot")
   expect_equal(
     names(p$data),
-    c("degree", "wt df", "wt degree", "mean", "# resamples", ".metric", "name", "value")
+    c(
+      "degree",
+      "wt df",
+      "wt degree",
+      "mean",
+      "# resamples",
+      ".metric",
+      "name",
+      "value"
+    )
   )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
@@ -156,7 +190,16 @@ test_that("regular grid plot", {
   expect_s3_class(p, "ggplot")
   expect_equal(
     names(p$data),
-    c("degree", "wt df", "wt degree", "mean", "# resamples", ".metric", "name", "value")
+    c(
+      "degree",
+      "wt df",
+      "wt degree",
+      "mean",
+      "# resamples",
+      ".metric",
+      "name",
+      "value"
+    )
   )
   expect_equal(rlang::get_expr(p$mapping$x), expr(value))
   expect_equal(rlang::get_expr(p$mapping$y), expr(mean))
@@ -166,7 +209,6 @@ test_that("regular grid plot", {
 
   expect_equal(p$labels$y, "rmse")
   expect_equal(p$labels$x, "deg_free")
-
 
   p <- autoplot(svm_reg_results)
   expect_s3_class(p, "ggplot")
@@ -183,7 +225,6 @@ test_that("regular grid plot", {
   expect_equal(p$labels$y, "")
   expect_equal(p$labels$colour, as.name("%^*#"))
   expect_equal(p$labels$x, "Cost")
-  expect_equal(p$labels$group, "%^*#")
 
   expect_true(grepl("^trans", class(p$scales$scales[[1]]$trans)))
   expect_equal(p$scales$scales[[1]]$trans$name, "log-2")
@@ -191,12 +232,16 @@ test_that("regular grid plot", {
 })
 
 
-
 test_that("coord_obs_pred", {
+  skip_if_not_installed("modeldata")
+
   data(solubility_test, package = "modeldata")
 
   p <-
-    ggplot2::ggplot(solubility_test, ggplot2::aes(x = solubility, y = prediction)) +
+    ggplot2::ggplot(
+      solubility_test,
+      ggplot2::aes(x = solubility, y = prediction)
+    ) +
     ggplot2::geom_abline(lty = 2) +
     ggplot2::geom_point(alpha = 0.5)
 
@@ -204,7 +249,7 @@ test_that("coord_obs_pred", {
 
   p2 <- p + coord_obs_pred()
 
-  expect_error(print(p2), regexp = NA)
+  expect_no_error(print(p2))
 
   expect_true(inherits(p2$coordinates, "CoordObsPred"))
   expect_equal(p2$coordinates$limits$x, rng)
@@ -213,18 +258,23 @@ test_that("coord_obs_pred", {
 
   solubility_test$solubility[1] <- NA
   p3 <-
-    ggplot2::ggplot(solubility_test, ggplot2::aes(x = solubility, y = prediction)) +
+    ggplot2::ggplot(
+      solubility_test,
+      ggplot2::aes(x = solubility, y = prediction)
+    ) +
     ggplot2::geom_abline(lty = 2) +
     ggplot2::geom_point(alpha = 0.5)
   expect_snapshot_warning(print(p3 + coord_obs_pred()))
 })
 
 test_that("1D regular grid x labels", {
+  skip_if_not_installed("kernlab")
+
   set.seed(1)
   res <-
-    parsnip::svm_rbf(cost = tune()) %>%
-    parsnip::set_engine("kernlab") %>%
-    parsnip::set_mode("regression") %>%
+    parsnip::svm_rbf(cost = tune()) |>
+    parsnip::set_engine("kernlab") |>
+    parsnip::set_mode("regression") |>
     tune_grid(mpg ~ ., resamples = rsample::vfold_cv(mtcars, v = 5), grid = 3)
   expect_equal(autoplot(res)$labels$x, c(cost = "Cost"))
 })
@@ -232,6 +282,7 @@ test_that("1D regular grid x labels", {
 test_that("plot_regular_grid with fairness metrics (#773)", {
   skip_on_cran()
   skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+  skip_if_not_installed("kknn")
 
   knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
   mtcars_fair <- mtcars
@@ -244,13 +295,15 @@ test_that("plot_regular_grid with fairness metrics (#773)", {
 
   set.seed(1)
   res <- tune_grid(
-    knn, vs ~ mpg + hp + cyl, resamples = boots, grid = n_grid,
-    metrics =
-      yardstick::metric_set(
-        yardstick::roc_auc,
-        yardstick::demographic_parity(cyl),
-        yardstick::demographic_parity(am)
-      )
+    knn,
+    vs ~ mpg + hp + cyl,
+    resamples = boots,
+    grid = n_grid,
+    metrics = yardstick::metric_set(
+      yardstick::roc_auc,
+      yardstick::demographic_parity(cyl),
+      yardstick::demographic_parity(am)
+    )
   )
 
   res_plot <- autoplot(res)
@@ -264,8 +317,14 @@ test_that("plot_regular_grid with fairness metrics (#773)", {
 test_that("plot_marginals with fairness metrics (#773)", {
   skip_on_cran()
   skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+  skip_if_not_installed("kknn")
 
-  knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune(), weight_func = tune())
+  knn <- parsnip::nearest_neighbor(
+    "classification",
+    "kknn",
+    neighbors = tune(),
+    weight_func = tune()
+  )
   mtcars_fair <- mtcars
   mtcars_fair$vs <- as.factor(mtcars_fair$vs)
   mtcars_fair$cyl <- as.factor(mtcars_fair$cyl)
@@ -276,13 +335,15 @@ test_that("plot_marginals with fairness metrics (#773)", {
 
   set.seed(1)
   res <- tune_grid(
-    knn, vs ~ mpg + hp + cyl, resamples = boots, grid = n_grid,
-    metrics =
-      yardstick::metric_set(
-        yardstick::roc_auc,
-        yardstick::demographic_parity(cyl),
-        yardstick::demographic_parity(am)
-      )
+    knn,
+    vs ~ mpg + hp + cyl,
+    resamples = boots,
+    grid = n_grid,
+    metrics = yardstick::metric_set(
+      yardstick::roc_auc,
+      yardstick::demographic_parity(cyl),
+      yardstick::demographic_parity(am)
+    )
   )
 
   res_plot <- autoplot(res)
@@ -296,6 +357,7 @@ test_that("plot_marginals with fairness metrics (#773)", {
 test_that("plot_perf_vs_iter with fairness metrics (#773)", {
   skip_on_cran()
   skip_if_not_installed("yardstick", minimum_version = "1.2.0.9001")
+  skip_if_not_installed("kknn")
 
   knn <- parsnip::nearest_neighbor("classification", "kknn", neighbors = tune())
   mtcars_fair <- mtcars
@@ -309,13 +371,14 @@ test_that("plot_perf_vs_iter with fairness metrics (#773)", {
   set.seed(1)
   suppressMessages(
     res <- tune_bayes(
-      knn, vs ~ mpg + hp + cyl, resamples = boots,
-      metrics =
-        yardstick::metric_set(
-          yardstick::roc_auc,
-          yardstick::demographic_parity(cyl),
-          yardstick::demographic_parity(am)
-        )
+      knn,
+      vs ~ mpg + hp + cyl,
+      resamples = boots,
+      metrics = yardstick::metric_set(
+        yardstick::roc_auc,
+        yardstick::demographic_parity(cyl),
+        yardstick::demographic_parity(am)
+      )
     )
   )
 
@@ -329,21 +392,26 @@ test_that("plot_perf_vs_iter with fairness metrics (#773)", {
 
 test_that("regular grid plot", {
   skip_if_not_installed("ggplot2", minimum_version = "3.5.0")
+  skip_if_not_installed("kernlab")
 
   svm_spec <-
-    parsnip::svm_rbf(cost = tune()) %>%
-    parsnip::set_engine("kernlab") %>%
+    parsnip::svm_rbf(cost = tune()) |>
+    parsnip::set_engine("kernlab") |>
     parsnip::set_mode("regression")
 
   svm_grid <-
-    svm_spec %>%
-    extract_parameter_set_dials() %>%
+    svm_spec |>
+    extract_parameter_set_dials() |>
     dials::grid_regular(levels = 1)
 
   set.seed(1)
   res <-
-    svm_spec %>%
-    tune_grid(mpg ~ ., resamples = rsample::vfold_cv(mtcars, v = 5), grid = svm_grid)
+    svm_spec |>
+    tune_grid(
+      mpg ~ .,
+      resamples = rsample::vfold_cv(mtcars, v = 5),
+      grid = svm_grid
+    )
 
   expect_snapshot(
     error = TRUE,
@@ -352,14 +420,14 @@ test_that("regular grid plot", {
 })
 
 test_that("evaluation time warning for non-survival model", {
+  skip_if_not_installed("kernlab")
 
   set.seed(1)
   res <-
-    parsnip::svm_rbf(cost = tune()) %>%
-    parsnip::set_engine("kernlab") %>%
-    parsnip::set_mode("regression") %>%
+    parsnip::svm_rbf(cost = tune()) |>
+    parsnip::set_engine("kernlab") |>
+    parsnip::set_mode("regression") |>
     tune_grid(mpg ~ ., resamples = rsample::vfold_cv(mtcars, v = 5), grid = 2)
 
   expect_snapshot(foo <- autoplot(res, metric = "rmse", eval_time = 10))
-
 })

@@ -152,7 +152,7 @@ via \link[=extract_workflow.tune_results]{extract_workflow()}.
 }
 
 \examples{
-\dontshow{if (tune:::should_run_examples()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (tune:::should_run_examples() & rlang::is_installed("splines2")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(rsample)
 library(parsnip)
@@ -160,10 +160,10 @@ library(parsnip)
 set.seed(6735)
 tr_te_split <- initial_split(mtcars)
 
-spline_rec <- recipe(mpg ~ ., data = mtcars) \%>\%
-  step_ns(disp)
+spline_rec <- recipe(mpg ~ ., data = mtcars) |>
+  step_spline_natural(disp)
 
-lin_mod <- linear_reg() \%>\%
+lin_mod <- linear_reg() |>
   set_engine("lm")
 
 spline_res <- last_fit(lin_mod, spline_rec, split = tr_te_split)
@@ -179,8 +179,8 @@ collect_predictions(spline_res)
 
 library(workflows)
 spline_wfl <-
-  workflow() \%>\%
-  add_recipe(spline_rec) \%>\%
+  workflow() |>
+  add_recipe(spline_rec) |>
   add_model(lin_mod)
 
 last_fit(spline_wfl, split = tr_te_split)

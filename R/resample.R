@@ -13,14 +13,14 @@
 #'
 #' @param control A [control_resamples()] object used to fine tune the resampling
 #'   process.
-#' 
+#'
 #' @inheritSection tune_grid Performance Metrics
 #' @inheritSection tune_grid Obtaining Predictions
 #' @inheritSection tune_grid Extracting Information
 #' @template case-weights
 #' @template censored-regression
 #' @seealso [control_resamples()], [collect_predictions()], [collect_metrics()]
-#' @examplesIf tune:::should_run_examples()
+#' @examplesIf tune:::should_run_examples() & rlang::is_installed("splines2")
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
@@ -29,11 +29,11 @@
 #' set.seed(6735)
 #' folds <- vfold_cv(mtcars, v = 5)
 #'
-#' spline_rec <- recipe(mpg ~ ., data = mtcars) %>%
-#'   step_ns(disp) %>%
-#'   step_ns(wt)
+#' spline_rec <- recipe(mpg ~ ., data = mtcars) |>
+#'   step_spline_natural(disp) |>
+#'   step_spline_natural(wt)
 #'
-#' lin_mod <- linear_reg() %>%
+#' lin_mod <- linear_reg() |>
 #'   set_engine("lm")
 #'
 #' control <- control_resamples(save_pred = TRUE)
@@ -48,8 +48,8 @@
 #' # supply that to `fit_resamples()` instead. Here, a workflows "variables"
 #' # preprocessor is used, which lets you supply terms using dplyr selectors.
 #' # The variables are used as-is, no preprocessing is done to them.
-#' wf <- workflow() %>%
-#'   add_variables(outcomes = mpg, predictors = everything()) %>%
+#' wf <- workflow() |>
+#'   add_variables(outcomes = mpg, predictors = everything()) |>
 #'   add_model(lin_mod)
 #'
 #' wf_res <- fit_resamples(wf, folds)
@@ -60,27 +60,25 @@ fit_resamples <- function(object, ...) {
 
 #' @export
 fit_resamples.default <- function(object, ...) {
-  msg <- paste0(
-    "The first argument to [fit_resamples()] should be either ",
-    "a model or workflow."
+  cli::cli_abort(
+    "The first argument to {.fn fit_resamples} should be either a model or workflow,
+    not {.obj_type_friendly {object}}."
   )
-  rlang::abort(msg)
 }
 
 #' @export
 #' @rdname fit_resamples
-fit_resamples.model_spec <- function(object,
-                                     preprocessor,
-                                     resamples,
-                                     ...,
-                                     metrics = NULL,
-                                     eval_time = NULL,
-                                     control = control_resamples()) {
+fit_resamples.model_spec <- function(
+  object,
+  preprocessor,
+  resamples,
+  ...,
+  metrics = NULL,
+  eval_time = NULL,
+  control = control_resamples()
+) {
   if (rlang::is_missing(preprocessor) || !is_preprocessor(preprocessor)) {
-    rlang::abort(paste(
-      "To tune a model spec, you must preprocess",
-      "with a formula or recipe"
-    ))
+    cli::cli_abort(tune_pp_msg)
   }
 
   control <- parsnip::condense_control(control, control_resamples())
@@ -107,12 +105,14 @@ fit_resamples.model_spec <- function(object,
 
 #' @rdname fit_resamples
 #' @export
-fit_resamples.workflow <- function(object,
-                                   resamples,
-                                   ...,
-                                   metrics = NULL,
-                                   eval_time = NULL,
-                                   control = control_resamples()) {
+fit_resamples.workflow <- function(
+  object,
+  resamples,
+  ...,
+  metrics = NULL,
+  eval_time = NULL,
+  control = control_resamples()
+) {
   empty_ellipses(...)
 
   control <- parsnip::condense_control(control, control_resamples())
@@ -132,8 +132,15 @@ fit_resamples.workflow <- function(object,
 
 # ------------------------------------------------------------------------------
 
-resample_workflow <- function(workflow, resamples, metrics, eval_time = NULL, 
-                              control, rng, call = caller_env()) {
+resample_workflow <- function(
+  workflow,
+  resamples,
+  metrics,
+  eval_time = NULL,
+  control,
+  rng,
+  call = caller_env()
+) {
   check_no_tuning(workflow)
 
   # `NULL` is the signal that we have no grid to tune with

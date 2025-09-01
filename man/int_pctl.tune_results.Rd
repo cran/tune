@@ -13,6 +13,7 @@
   alpha = 0.05,
   allow_par = TRUE,
   event_level = "first",
+  keep_replicates = FALSE,
   ...
 )
 }
@@ -42,11 +43,14 @@ backend is registered).}
 \item{event_level}{A single string. Either \code{"first"} or \code{"second"} to specify
 which level of truth to consider as the "event".}
 
+\item{keep_replicates}{A logic for saving the individual estimates from each
+bootstrap sample (as a list column called \code{.values}).}
+
 \item{...}{Not currently used.}
 }
 \value{
 A tibble of metrics with additional columns for \code{.lower} and
-\code{.upper}.
+\code{.upper} (and potentially, \code{.values}).
 }
 \description{
 Using out-of-sample predictions, the bootstrap is used to create percentile
@@ -77,24 +81,26 @@ computations can take a long time unless the times are filtered with the
 \code{eval_time} argument.
 }
 \examples{
-\dontshow{if (!tune:::is_cran_check() & tune:::should_run_examples("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
-data(Sacramento, package = "modeldata")
-library(rsample)
-library(parsnip)
+\dontshow{if (!tune:::is_cran_check()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+if (rlang::is_installed("modeldata")) {
+  data(Sacramento, package = "modeldata")
+  library(rsample)
+  library(parsnip)
 
-set.seed(13)
-sac_rs <- vfold_cv(Sacramento)
+  set.seed(13)
+  sac_rs <- vfold_cv(Sacramento)
 
-lm_res <-
-  linear_reg() \%>\%
-  fit_resamples(
-    log10(price) ~ beds + baths + sqft + type + latitude + longitude,
-    resamples = sac_rs,
-    control = control_resamples(save_pred = TRUE)
-  )
+  lm_res <-
+    linear_reg() |>
+    fit_resamples(
+      log10(price) ~ beds + baths + sqft + type + latitude + longitude,
+      resamples = sac_rs,
+      control = control_resamples(save_pred = TRUE)
+    )
 
-set.seed(31)
-int_pctl(lm_res)
+  set.seed(31)
+  int_pctl(lm_res)
+}
 \dontshow{\}) # examplesIf}
 }
 \references{

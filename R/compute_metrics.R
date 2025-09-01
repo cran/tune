@@ -71,31 +71,39 @@ compute_metrics <- function(x, metrics, summarize, event_level, ...) {
 
 #' @export
 #' @rdname compute_metrics
-compute_metrics.default <- function(x,
-                                    metrics,
-                                    summarize = TRUE,
-                                    event_level = "first",
-                                    ...) {
-  rlang::abort("No `compute_metrics()` method exists for this type of object.")
+compute_metrics.default <- function(
+  x,
+  metrics,
+  summarize = TRUE,
+  event_level = "first",
+  ...
+) {
+  cli::cli_abort(
+    "No {.fn compute_metrics} method exists for
+                 {.obj_type_friendly {x}}."
+  )
 }
 
 #' @export
 #' @rdname compute_metrics
-compute_metrics.tune_results <- function(x,
-                                         metrics,
-                                         ...,
-                                         summarize = TRUE,
-                                         event_level = "first") {
+compute_metrics.tune_results <- function(
+  x,
+  metrics,
+  ...,
+  summarize = TRUE,
+  event_level = "first"
+) {
   rlang::check_dots_empty()
+  check_bool(summarize)
   if (!".predictions" %in% names(x)) {
-    rlang::abort(paste0(
-      "`x` must have been generated with the ",
-      "control argument `save_pred = TRUE`."
-    ))
+    cli::cli_abort(
+      "{.arg x} must have been generated with the control argument
+      {.code save_pred = TRUE}."
+    )
   }
 
   if (!inherits(metrics, "metric_set")) {
-    rlang::abort("`metrics` must be a metric set.")
+    cli::cli_abort("{.arg metrics} must be a metric set.")
   }
 
   new_metrics_info <- metrics_info(metrics)
@@ -112,10 +120,6 @@ compute_metrics.tune_results <- function(x,
       "i" = "To save predictions for {new_metrics_info$type} metrics, \\
              generate {.arg x} with metrics of that type."
     ))
-  }
-
-  if (!inherits(summarize, "logical") || length(summarize) != 1L) {
-    rlang::abort("The `summarize` argument must be a single logical value.")
   }
 
   param_names <- .get_tune_parameter_names(x)
@@ -143,9 +147,9 @@ compute_metrics.tune_results <- function(x,
   # nest by resample id
   nest_cols <- "id"
 
-  if ("Iter1" %in% mtrcs$.config) {
+  # Convert the iterative .configs into numbers
+  if (any(grepl("^[iI]ter", mtrcs$.config))) {
     mtrcs$.iter <- .config_to_.iter(mtrcs$.config)
-
     nest_cols <- c(nest_cols, ".iter")
   }
 

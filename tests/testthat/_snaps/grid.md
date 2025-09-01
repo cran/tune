@@ -6,14 +6,9 @@
         1
       }, save_pred = TRUE))
     Message
-      x Fold1: preprocessor 1/1:
-        Error in `step_bs()`:
-        Caused by error in `if (...) NULL`:
-        ! missing value where TRUE/FALSE needed
-      x Fold2: preprocessor 1/1:
-        Error in `step_bs()`:
-        Caused by error in `if (...) NULL`:
-        ! missing value where TRUE/FALSE needed
+      > A | error:   Error in `step_spline_b()`:
+                     Caused by error in `prep()`:
+                     ! `deg_free` must be a whole number, not a numeric `NA`.
     Condition
       Warning:
       All models failed. Run `show_notes(.Last.tune.result)` for more information.
@@ -26,15 +21,8 @@
         1
       }, save_pred = TRUE))
     Message
-      x Fold1: preprocessor 1/1:
-        Error in `hardhat::mold()`:
-        ! The following predictor was not found in `data`: "z".
-      x Fold2: preprocessor 1/1:
-        Error in `hardhat::mold()`:
-        ! The following predictor was not found in `data`: "z".
+      > A | error:   The following predictor was not found in `data`: "z".
     Condition
-      Warning:
-      All models failed. Run `show_notes(.Last.tune.result)` for more information.
 
 # argument order gives errors for recipes
 
@@ -43,7 +31,7 @@
         mtcars, v = 2))
     Condition
       Error in `tune_grid()`:
-      ! The first argument to [tune_grid()] should be either a model or workflow.
+      ! The first argument to `tune_grid()` should be either a model or workflow, not a <recipe> object.
 
 # argument order gives errors for formula
 
@@ -51,7 +39,7 @@
       tune_grid(mpg ~ ., helper_objects$lm_mod, rsample::vfold_cv(mtcars, v = 2))
     Condition
       Error in `tune_grid()`:
-      ! The first argument to [tune_grid()] should be either a model or workflow.
+      ! The first argument to `tune_grid()` should be either a model or workflow, not a <formula> object.
 
 # ellipses with tune_grid
 
@@ -59,21 +47,21 @@
       tune_grid(wflow, resamples = folds, grid = 3, something = "wrong")
     Condition
       Warning:
-      The `...` are not used in this function but one or more objects were passed: 'something'
+      The `...` are not used in this function but 1 object was passed: "something"
     Output
       # Tuning results
       # 10-fold cross-validation 
       # A tibble: 10 x 4
          splits         id     .metrics         .notes          
          <list>         <chr>  <list>           <list>          
-       1 <split [28/4]> Fold01 <tibble [6 x 5]> <tibble [0 x 3]>
-       2 <split [28/4]> Fold02 <tibble [6 x 5]> <tibble [0 x 3]>
-       3 <split [29/3]> Fold03 <tibble [6 x 5]> <tibble [0 x 3]>
-       4 <split [29/3]> Fold04 <tibble [6 x 5]> <tibble [0 x 3]>
-       5 <split [29/3]> Fold05 <tibble [6 x 5]> <tibble [0 x 3]>
-       6 <split [29/3]> Fold06 <tibble [6 x 5]> <tibble [0 x 3]>
-       7 <split [29/3]> Fold07 <tibble [6 x 5]> <tibble [0 x 3]>
-       8 <split [29/3]> Fold08 <tibble [6 x 5]> <tibble [0 x 3]>
-       9 <split [29/3]> Fold09 <tibble [6 x 5]> <tibble [0 x 3]>
-      10 <split [29/3]> Fold10 <tibble [6 x 5]> <tibble [0 x 3]>
+       1 <split [28/4]> Fold01 <tibble [6 x 5]> <tibble [0 x 4]>
+       2 <split [28/4]> Fold02 <tibble [6 x 5]> <tibble [0 x 4]>
+       3 <split [29/3]> Fold03 <tibble [6 x 5]> <tibble [0 x 4]>
+       4 <split [29/3]> Fold04 <tibble [6 x 5]> <tibble [0 x 4]>
+       5 <split [29/3]> Fold05 <tibble [6 x 5]> <tibble [0 x 4]>
+       6 <split [29/3]> Fold06 <tibble [6 x 5]> <tibble [0 x 4]>
+       7 <split [29/3]> Fold07 <tibble [6 x 5]> <tibble [0 x 4]>
+       8 <split [29/3]> Fold08 <tibble [6 x 5]> <tibble [0 x 4]>
+       9 <split [29/3]> Fold09 <tibble [6 x 5]> <tibble [0 x 4]>
+      10 <split [29/3]> Fold10 <tibble [6 x 5]> <tibble [0 x 4]>
 

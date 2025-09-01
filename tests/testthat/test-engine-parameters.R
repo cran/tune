@@ -27,35 +27,32 @@ test_that("tuning with engine parameters with dials objects", {
   skip_if(utils::packageVersion("dials") <= "0.0.7")
 
   rf_mod <-
-    parsnip::rand_forest(min_n = tune()) %>%
-    parsnip::set_engine("randomForest", maxnodes = tune()) %>%
+    parsnip::rand_forest(min_n = tune()) |>
+    parsnip::set_engine("randomForest", maxnodes = tune()) |>
     parsnip::set_mode("regression")
 
   set.seed(192)
   rs <- rsample::vfold_cv(mtcars)
 
   set.seed(19828)
-  expect_error(
+  expect_no_error(
     suppressMessages(
-      rf_tune <- rf_mod %>% tune_grid(mpg ~ ., resamples = rs, grid = 3)
-    ),
-    regex = NA
+      rf_tune <- rf_mod |> tune_grid(mpg ~ ., resamples = rs, grid = 3)
+    )
   )
-  expect_error(
-    p <- autoplot(rf_tune),
-    regex = NA
+  expect_no_error(
+    p <- autoplot(rf_tune)
   )
 
   set.seed(283)
-  expect_error(
+  expect_no_error(
     suppressMessages(
-      rf_search <- rf_mod %>% tune_bayes(mpg ~ ., resamples = rs, initial = 3, iter = 2)
-    ),
-    regex = NA
+      rf_search <- rf_mod |>
+        tune_bayes(mpg ~ ., resamples = rs, initial = 3, iter = 2)
+    )
   )
-  expect_error(
-    p <- autoplot(rf_search),
-    regex = NA
+  expect_no_error(
+    p <- autoplot(rf_search)
   )
 })
 
@@ -68,8 +65,8 @@ test_that("tuning with engine parameters without dials objects", {
   ## ---------------------------------------------------------------------------
 
   rf_mod <-
-    parsnip::rand_forest(min_n = tune()) %>%
-    parsnip::set_engine("randomForest", corr.bias = tune()) %>%
+    parsnip::rand_forest(min_n = tune()) |>
+    parsnip::set_engine("randomForest", corr.bias = tune()) |>
     parsnip::set_mode("regression")
 
   grid <-
@@ -84,16 +81,15 @@ test_that("tuning with engine parameters without dials objects", {
   ## ---------------------------------------------------------------------------
 
   expect_snapshot(error = TRUE, {
-    rf_tune <- rf_mod %>% tune_grid(mpg ~ ., resamples = rs, grid = 3)
+    rf_tune <- rf_mod |> tune_grid(mpg ~ ., resamples = rs, grid = 3)
   })
 
   ## ---------------------------------------------------------------------------
 
-  expect_error(
+  expect_no_error(
     suppressMessages(
-      rf_tune <- rf_mod %>% tune_grid(mpg ~ ., resamples = rs, grid = grid)
-    ),
-    regex = NA
+      rf_tune <- rf_mod |> tune_grid(mpg ~ ., resamples = rs, grid = grid)
+    )
   )
   expect_snapshot(error = TRUE, {
     p <- autoplot(rf_tune)
@@ -103,6 +99,6 @@ test_that("tuning with engine parameters without dials objects", {
 
   set.seed(283)
   expect_snapshot(error = TRUE, {
-    rf_search <- rf_mod %>% tune_bayes(mpg ~ ., resamples = rs)
+    rf_search <- rf_mod |> tune_bayes(mpg ~ ., resamples = rs)
   })
 })

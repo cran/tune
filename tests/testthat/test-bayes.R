@@ -1,15 +1,15 @@
 rec_tune_1 <-
-  recipes::recipe(mpg ~ ., data = mtcars) %>%
-  recipes::step_normalize(recipes::all_predictors()) %>%
+  recipes::recipe(mpg ~ ., data = mtcars) |>
+  recipes::step_normalize(recipes::all_predictors()) |>
   recipes::step_pca(recipes::all_predictors(), num_comp = tune())
 
 rec_no_tune_1 <-
-  recipes::recipe(mpg ~ ., data = mtcars) %>%
+  recipes::recipe(mpg ~ ., data = mtcars) |>
   recipes::step_normalize(recipes::all_predictors())
 
-lm_mod <- parsnip::linear_reg() %>% parsnip::set_engine("lm")
+lm_mod <- parsnip::linear_reg() |> parsnip::set_engine("lm")
 
-svm_mod <- parsnip::svm_rbf(mode = "regression", cost = tune()) %>%
+svm_mod <- parsnip::svm_rbf(mode = "regression", cost = tune()) |>
   parsnip::set_engine("kernlab")
 
 iter1 <- 2
@@ -20,10 +20,11 @@ iterT <- iter1 + iter2
 
 test_that("tune recipe only", {
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_tune_1) |>
     add_model(lm_mod)
-  pset <- extract_parameter_set_dials(wflow) %>% update(num_comp = dials::num_comp(c(1, 5)))
+  pset <- extract_parameter_set_dials(wflow) |>
+    update(num_comp = dials::num_comp(c(1, 5)))
   folds <- rsample::vfold_cv(mtcars)
   control <- control_bayes(extract = identity)
 
@@ -57,7 +58,7 @@ test_that("tune recipe only", {
   expect_null(.get_tune_eval_time_target(res))
 
   set.seed(1)
-  expect_error(
+  expect_no_error(
     suppressMessages(
       tune_bayes(
         wflow,
@@ -67,10 +68,8 @@ test_that("tune recipe only", {
         iter = iter2,
         corr = list(type = "matern", nu = 3 / 2)
       )
-    ),
-    regexp = NA
+    )
   )
-
 
   # test verbose options
   set.seed(1)
@@ -113,9 +112,11 @@ test_that("tune recipe only", {
 # ------------------------------------------------------------------------------
 
 test_that("tune model only (with recipe)", {
+  skip_if_not_installed("kernlab")
+
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_no_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_no_tune_1) |>
     add_model(svm_mod)
   pset <- extract_parameter_set_dials(wflow)
   folds <- rsample::vfold_cv(mtcars)
@@ -142,10 +143,12 @@ test_that("tune model only (with recipe)", {
 # ------------------------------------------------------------------------------
 
 test_that("tune model only (with variables)", {
+  skip_if_not_installed("kernlab")
+
   set.seed(4400)
 
-  wflow <- workflow() %>%
-    add_variables(mpg, everything()) %>%
+  wflow <- workflow() |>
+    add_variables(mpg, everything()) |>
     add_model(svm_mod)
 
   pset <- extract_parameter_set_dials(wflow)
@@ -176,11 +179,13 @@ test_that("tune model only (with variables)", {
 # ------------------------------------------------------------------------------
 
 test_that("tune model only (with recipe, multi-predict)", {
+  skip_if_not_installed("kernlab")
+
   skip_on_cran()
 
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_no_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_no_tune_1) |>
     add_model(svm_mod)
   pset <- extract_parameter_set_dials(wflow)
   folds <- rsample::vfold_cv(mtcars)
@@ -210,11 +215,14 @@ test_that("tune model only (with recipe, multi-predict)", {
 # ------------------------------------------------------------------------------
 
 test_that("tune model and recipe", {
+  skip_if_not_installed("kernlab")
+
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_tune_1) |>
     add_model(svm_mod)
-  pset <- extract_parameter_set_dials(wflow) %>% update(num_comp = dials::num_comp(c(1, 3)))
+  pset <- extract_parameter_set_dials(wflow) |>
+    update(num_comp = dials::num_comp(c(1, 3)))
   folds <- rsample::vfold_cv(mtcars)
   suppressMessages({
     res <- tune_bayes(
@@ -242,13 +250,15 @@ test_that("tune model and recipe", {
 # ------------------------------------------------------------------------------
 
 test_that("tune model and recipe (multi-predict)", {
+  skip_if_not_installed("kernlab")
   skip_on_cran()
 
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_tune_1) |>
     add_model(svm_mod)
-  pset <- extract_parameter_set_dials(wflow) %>% update(num_comp = dials::num_comp(c(2, 3)))
+  pset <- extract_parameter_set_dials(wflow) |>
+    update(num_comp = dials::num_comp(c(2, 3)))
   grid <- dials::grid_regular(pset, levels = c(3, 2))
   folds <- rsample::vfold_cv(mtcars)
   suppressMessages({
@@ -273,7 +283,7 @@ test_that("tune model and recipe (multi-predict)", {
 # ------------------------------------------------------------------------------
 
 test_that("tune recipe only - failure in recipe is caught elegantly", {
-  skip("test is not implemented for tune_bayes()")
+  skip_if_not_installed("splines2")
 
   # With tune_grid() this tests for NA values in the grid.
   # This is not applicable for tune_bayes().
@@ -281,54 +291,68 @@ test_that("tune recipe only - failure in recipe is caught elegantly", {
   set.seed(7898)
   data_folds <- rsample::vfold_cv(mtcars, v = 2)
 
-  rec <- recipes::recipe(mpg ~ ., data = mtcars) %>%
-    recipes::step_bs(disp, deg_free = tune())
+  rec <- recipes::recipe(mpg ~ ., data = mtcars) |>
+    recipes::step_spline_b(disp, deg_free = tune())
 
-  model <- parsnip::linear_reg(mode = "regression") %>%
+  model <- parsnip::linear_reg(mode = "regression") |>
     parsnip::set_engine("lm")
 
   # NA values not allowed in recipe
   cars_grid <- tibble(deg_free = c(3, NA_real_, 4))
 
-  # ask for predictions and extractions
-  control <- control_bayes(
-    save_pred = TRUE,
-    extract = function(x) 1L
-  )
-
   suppressMessages({
-    cars_res <- tune_bayes(
+    cars_init_res <- tune_grid(
       model,
       preprocessor = rec,
       resamples = data_folds,
-      control = control
+      grid = cars_grid
     )
   })
 
-  notes <- cars_res$.notes
-  note <- notes[[1]]$note
+  suppressMessages({
+    set.seed(283) #<- chosen to not generate faiures
+    cars_bayes_res <- tune_bayes(
+      model,
+      preprocessor = rec,
+      resamples = data_folds,
+      initial = cars_init_res,
+      iter = 2
+    )
+  })
 
-  extract <- cars_res$.extracts[[1]]
+  exp_failures <- nrow(data_folds) * sum(!complete.cases(cars_grid))
+  obs_init_failures <- collect_notes(cars_init_res) |>
+    filter(type == "error") |>
+    nrow()
+  obs_failures <- collect_notes(cars_bayes_res) |>
+    filter(type == "error") |>
+    nrow()
 
-  predictions <- cars_res$.predictions[[1]]
-  used_deg_free <- sort(unique(predictions$deg_free))
+  exp_init_grid_res <-
+    cars_grid |> tidyr::drop_na() |> distinct(deg_free) |> nrow()
 
-  expect_length(notes, 2L)
+  expect_equal(obs_init_failures, obs_failures)
+  expect_equal(obs_failures, exp_failures)
 
-  # failing rows are not in the output
-  expect_equal(nrow(extract), 2L)
-  expect_equal(extract$deg_free, c(3, 4))
+  all_notes <- collect_notes(cars_bayes_res)
+  expect_equal(nrow(all_notes), 11L)
 
-  expect_equal(used_deg_free, c(3, 4))
+  expect_equal(
+    collect_metrics(cars_bayes_res) |> distinct(deg_free) |> nrow(),
+    exp_init_grid_res + 2
+  )
 })
 
 test_that("tune model only - failure in recipe is caught elegantly", {
+  skip_if_not_installed("splines2")
+  skip_if_not_installed("kernlab")
+
   set.seed(7898)
   data_folds <- rsample::vfold_cv(mtcars, v = 2)
 
   # NA values not allowed in recipe
-  rec <- recipes::recipe(mpg ~ ., data = mtcars) %>%
-    recipes::step_bs(disp, deg_free = NA_real_)
+  rec <- recipes::recipe(mpg ~ ., data = mtcars) |>
+    recipes::step_spline_b(disp, deg_free = NA_real_)
 
   expect_snapshot({
     cars_res <- tune_bayes(
@@ -342,19 +366,26 @@ test_that("tune model only - failure in recipe is caught elegantly", {
 })
 
 test_that("tune model only - failure in formula is caught elegantly", {
+  skip_if_not_installed("kernlab")
+
   set.seed(7898)
   data_folds <- rsample::vfold_cv(mtcars, v = 2)
 
   # these terms don't exist!
-  wflow <- workflow() %>%
-    add_formula(y ~ z) %>%
+  wflow <- workflow() |>
+    add_formula(y ~ z) |>
     add_model(svm_mod)
 
   expect_snapshot({
     cars_res <- tune_bayes(
       wflow,
       resamples = data_folds,
-      control = control_bayes(extract = function(x) {1}, save_pred = TRUE)
+      control = control_bayes(
+        extract = function(x) {
+          1
+        },
+        save_pred = TRUE
+      )
     )
   })
 
@@ -363,6 +394,8 @@ test_that("tune model only - failure in formula is caught elegantly", {
 
 test_that("tune model and recipe - failure in recipe is caught elegantly", {
   skip("test is not implemented for tune_bayes()")
+  skip_if_not_installed("splines2")
+  skip_if_not_installed("kernlab")
 
   # With tune_grid() this tests for NA values in the grid.
   # This is not applicable for tune_bayes().
@@ -370,38 +403,55 @@ test_that("tune model and recipe - failure in recipe is caught elegantly", {
   set.seed(7898)
   data_folds <- rsample::vfold_cv(mtcars, v = 2)
 
-  rec <- recipes::recipe(mpg ~ ., data = mtcars) %>%
-    recipes::step_bs(disp, deg_free = tune())
-
+  rec <- recipes::recipe(mpg ~ ., data = mtcars) |>
+    recipes::step_spline_b(disp, deg_free = tune())
 
   # NA values not allowed in recipe
-  cars_grid <- tibble(deg_free = c(NA_real_, 10L), cost = 0.01)
+  cars_grid <- tibble(
+    deg_free = c(3L, NA_real_, 10L),
+    cost = c(0.1, 0.01, 0.001)
+  )
 
   suppressMessages({
-    cars_res <- tune_bayes(
+    cars_init_res <- tune_grid(
       svm_mod,
       preprocessor = rec,
       resamples = data_folds,
-      control = control_bayes(extract = function(x) {1}, save_pred = TRUE)
+      grid = cars_grid
     )
   })
 
-  notes <- cars_res$.notes
-  note <- notes[[1]]$note
+  suppressMessages({
+    set.seed(283) #<- chosen to not generate faiures
+    cars_bayes_res <- tune_bayes(
+      svm_mod,
+      preprocessor = rec,
+      resamples = data_folds,
+      initial = cars_init_res,
+      iter = 2
+    )
+  })
 
-  extract <- cars_res$.extracts[[1]]
-  prediction <- cars_res$.predictions[[1]]
+  exp_failures <- nrow(data_folds) * sum(!complete.cases(cars_grid))
+  obs_init_failures <- collect_notes(cars_init_res) |>
+    filter(type == "error") |>
+    nrow()
+  obs_failures <- collect_notes(cars_bayes_res) |>
+    filter(type == "error") |>
+    nrow()
 
-  expect_length(notes, 2L)
+  exp_init_grid_res <-
+    cars_grid |> tidyr::drop_na() |> distinct(deg_free, cost) |> nrow()
 
-  # recipe failed half of the time, only 1 model passed
-  expect_equal(nrow(extract), 1L)
-  expect_equal(extract$deg_free, 10L)
-  expect_equal(extract$cost, 0.01)
+  expect_equal(obs_init_failures, obs_failures)
+  expect_equal(obs_failures, exp_failures)
+
+  all_notes <- collect_notes(cars_bayes_res)
+  expect_equal(nrow(all_notes), 6L)
 
   expect_equal(
-    unique(prediction[, c("deg_free", "cost")]),
-    tibble(deg_free = 10, cost = 0.01)
+    collect_metrics(cars_bayes_res) |> distinct(deg_free, cost) |> nrow(),
+    exp_init_grid_res + 2
   )
 })
 
@@ -419,6 +469,8 @@ test_that("argument order gives an error for recipes", {
 })
 
 test_that("argument order gives an error for formula", {
+  skip_if_not_installed("kernlab")
+
   expect_snapshot(error = TRUE, {
     tune_bayes(
       mpg ~ .,
@@ -433,10 +485,10 @@ test_that("argument order gives an error for formula", {
 
 test_that("retain extra attributes and saved GP candidates", {
   set.seed(4400)
-  wflow <- workflow() %>%
-    add_recipe(rec_tune_1) %>%
+  wflow <- workflow() |>
+    add_recipe(rec_tune_1) |>
     add_model(lm_mod)
-  pset <- extract_parameter_set_dials(wflow) %>%
+  pset <- extract_parameter_set_dials(wflow) |>
     update(num_comp = dials::num_comp(c(1, 5)))
   folds <- rsample::vfold_cv(mtcars)
   ctrl <- control_bayes(save_gp_scoring = TRUE)
@@ -464,6 +516,10 @@ test_that("retain extra attributes and saved GP candidates", {
   files <- list.files(path = tempdir(), pattern = "^gp_candidates")
   expect_true(length(files) == iter2)
 
+  current_objs <- c(ls(), "current_objs")
+  load(file.path(tempdir(), "gp_candidates_1.RData"))
+  new_obj <- ls()
+  expect_snapshot(setdiff(new_obj, current_objs))
 
   expect_snapshot(
     res2 <- tune_bayes(
@@ -501,22 +557,29 @@ test_that("too few starting values", {
 test_that("missing performance values", {
   skip_if(new_rng_snapshots)
   skip_if(packageVersion("dplyr") < "1.1.1")
+  skip_if_not_installed("modeldata")
 
   data(ames, package = "modeldata")
 
-  mod <- parsnip::decision_tree(cost_complexity = tune()) %>%
+  mod <- parsnip::decision_tree(cost_complexity = tune()) |>
     parsnip::set_mode("regression")
 
   set.seed(1)
-  folds <- rsample::validation_split(ames, prop = .9)
+  split <- rsample::initial_validation_split(ames)
+  folds <- rsample::validation_set(split)
 
   expect_snapshot({
     set.seed(1)
     res <-
-      mod %>%
+      mod |>
       tune_bayes(
-        Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type +
-          Latitude + Longitude,
+        Sale_Price ~
+          Neighborhood +
+            Gr_Liv_Area +
+            Year_Built +
+            Bldg_Type +
+            Latitude +
+            Longitude,
         resamples = folds,
         initial = 3,
         metrics = yardstick::metric_set(rsq),
@@ -527,10 +590,15 @@ test_that("missing performance values", {
   expect_snapshot(error = TRUE, {
     set.seed(2)
     res_fail <-
-      mod %>%
+      mod |>
       tune_bayes(
-        Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type +
-          Latitude + Longitude,
+        Sale_Price ~
+          Neighborhood +
+            Gr_Liv_Area +
+            Year_Built +
+            Bldg_Type +
+            Latitude +
+            Longitude,
         resamples = folds,
         initial = 5,
         metrics = yardstick::metric_set(rsq),
@@ -541,6 +609,8 @@ test_that("missing performance values", {
 
 # ------------------------------------------------------------------------------
 test_that("tune_bayes() output for `iter` edge cases (#721)", {
+  skip_if_not_installed("kknn")
+
   # for `iter = 0`, ought to match `tune_grid()`
   boots <- rsample::bootstraps(mtcars)
   wf <-
@@ -552,14 +622,19 @@ test_that("tune_bayes() output for `iter` edge cases (#721)", {
   ctrl_bayes <- control_bayes(seed = 1)
 
   set.seed(1)
-  res_bayes <- tune_bayes(wf, boots, iter = 0, initial = 10,
-                          control = ctrl_bayes)
+  res_bayes <- tune_bayes(
+    wf,
+    boots,
+    iter = 0,
+    initial = 10,
+    control = ctrl_bayes
+  )
 
   set.seed(1)
   res_grid <- tune_grid(wf, boots)
 
   expect_equal(
-    collect_metrics(res_bayes) %>% dplyr::select(-.iter),
+    collect_metrics(res_bayes) |> dplyr::select(-.iter),
     collect_metrics(res_grid)
   )
 

@@ -73,6 +73,9 @@ estimated for objects produced by \code{\link[=last_fit]{last_fit()}}.
 These functions supersede \code{extract_model()}.
 }
 \examples{
+\dontshow{if (rlang::is_installed("splines2")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+# example code
+
 library(recipes)
 library(rsample)
 library(parsnip)
@@ -80,10 +83,10 @@ library(parsnip)
 set.seed(6735)
 tr_te_split <- initial_split(mtcars)
 
-spline_rec <- recipe(mpg ~ ., data = mtcars) \%>\%
-  step_ns(disp)
+spline_rec <- recipe(mpg ~ ., data = mtcars) |>
+  step_spline_natural(disp)
 
-lin_mod <- linear_reg() \%>\%
+lin_mod <- linear_reg() |>
   set_engine("lm")
 
 spline_res <- last_fit(lin_mod, spline_rec, split = tr_te_split)
@@ -109,4 +112,5 @@ identical(
   extract_mold(spline_res)$blueprint$recipe,
   extract_recipe(spline_res)
 )
+\dontshow{\}) # examplesIf}
 }

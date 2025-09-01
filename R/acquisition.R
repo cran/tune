@@ -47,7 +47,7 @@
 #' @export
 prob_improve <- function(trade_off = 0, eps = .Machine$double.eps) {
   if (!is.numeric(trade_off) & !is_function(trade_off)) {
-    rlang::abort("`trade_off` should be a number or a function.")
+    cli::cli_abort("{.arg trade_off} should be a number or a function.")
   }
 
   lab <- "the probability of improvement"
@@ -55,7 +55,9 @@ prob_improve <- function(trade_off = 0, eps = .Machine$double.eps) {
   if (rlang::is_function(trade_off)) {
     farg <- names(formals(trade_off))
     if (length(farg) == 0) {
-      rlang::abort("The `trade_off` function should have at least one argument.")
+      cli::cli_abort(
+        "The {.fn trade_off} function should have at least one argument."
+      )
     }
     lab <- paste(lab, "with variable trade-off values.")
   }
@@ -74,8 +76,8 @@ print.prob_improve <- function(x, ...) {
 #' @export
 predict.prob_improve <-
   function(object, new_data, maximize, iter, best, ...) {
-    check_direction(maximize)
-    check_best(best)
+    check_bool(maximize)
+    check_number_decimal(best, allow_infinite = FALSE)
 
     if (is.function(object$trade_off)) {
       trade_off <- object$trade_off(iter)
@@ -84,20 +86,20 @@ predict.prob_improve <-
     }
 
     new_data <-
-      new_data %>%
+      new_data |>
       mutate(.sd = ifelse(.sd <= object$eps, object$eps, .sd))
 
     if (maximize) {
       new_data <-
-        new_data %>%
+        new_data |>
         mutate(delta = ((.mean - best - trade_off) / .sd))
     } else {
       new_data <-
-        new_data %>%
+        new_data |>
         mutate(delta = ((trade_off + best - .mean) / .sd))
     }
-    new_data %>%
-      dplyr::mutate(objective = pnorm(delta)) %>%
+    new_data |>
+      dplyr::mutate(objective = pnorm(delta)) |>
       dplyr::select(objective)
   }
 
@@ -107,7 +109,7 @@ predict.prob_improve <-
 #' @rdname prob_improve
 exp_improve <- function(trade_off = 0, eps = .Machine$double.eps) {
   if (!is.numeric(trade_off) & !is_function(trade_off)) {
-    rlang::abort("`trade_off` should be a number or a function.")
+    cli::cli_abort("{.arg trade_off} should be a number or a function.")
   }
 
   lab <- "the expected improvement"
@@ -115,7 +117,9 @@ exp_improve <- function(trade_off = 0, eps = .Machine$double.eps) {
   if (rlang::is_function(trade_off)) {
     farg <- names(formals(trade_off))
     if (length(farg) == 0) {
-      rlang::abort("The `trade_off` function should have at least one argument.")
+      cli::cli_abort(
+        "The {.fn trade_off} function should have at least one argument."
+      )
     }
     lab <- paste(lab, "with variable trade-off values.")
   }
@@ -125,9 +129,10 @@ exp_improve <- function(trade_off = 0, eps = .Machine$double.eps) {
 }
 
 #' @export
+# NOTE `maximize` is the direction of the metric, not the acquisition function
 predict.exp_improve <- function(object, new_data, maximize, iter, best, ...) {
-  check_direction(maximize)
-  check_best(best)
+  check_bool(maximize)
+  check_number_decimal(best, allow_infinite = FALSE)
 
   if (is.function(object$trade_off)) {
     trade_off <- object$trade_off(iter)
@@ -136,23 +141,23 @@ predict.exp_improve <- function(object, new_data, maximize, iter, best, ...) {
   }
 
   new_data <-
-    new_data %>%
+    new_data |>
     mutate(sd_trunc = ifelse(.sd <= object$eps, object$eps, .sd))
 
   if (maximize) {
-    new_data <- new_data %>% mutate(delta = .mean - best - trade_off)
+    new_data <- new_data |> mutate(delta = .mean - best - trade_off)
   } else {
-    new_data <- new_data %>% mutate(delta = trade_off + best - .mean)
+    new_data <- new_data |> mutate(delta = trade_off + best - .mean)
   }
   new_data <-
-    new_data %>%
+    new_data |>
     mutate(
       snr = delta / sd_trunc,
       z = ifelse(.sd <= object$eps, 0, snr),
       objective = (delta * pnorm(z)) + (sd_trunc * dnorm(z))
     )
 
-  new_data %>% dplyr::select(objective)
+  new_data |> dplyr::select(objective)
 }
 
 
@@ -160,13 +165,15 @@ predict.exp_improve <- function(object, new_data, maximize, iter, best, ...) {
 #' @rdname prob_improve
 conf_bound <- function(kappa = 0.1) {
   if (!is.numeric(kappa) & !is_function(kappa)) {
-    rlang::abort("`kappa` should be a number or a function.")
+    cli::cli_abort("{.arg kappa} should be a number or a function.")
   }
   lab <- "the confidence bound"
   if (rlang::is_function(kappa)) {
     farg <- names(formals(kappa))
     if (length(farg) == 0) {
-      rlang::abort("The `trade_off` function should have at least one argument.")
+      cli::cli_abort(
+        "The {.fn trade_off} function should have at least one argument."
+      )
     }
     lab <- paste(lab, "with variable kappa values.")
   }
@@ -177,7 +184,7 @@ conf_bound <- function(kappa = 0.1) {
 
 #' @export
 predict.conf_bound <- function(object, new_data, maximize, iter, ...) {
-  check_direction(maximize)
+  check_bool(maximize)
 
   if (is.function(object$kappa)) {
     kappa <- object$kappa(iter)
@@ -187,9 +194,9 @@ predict.conf_bound <- function(object, new_data, maximize, iter, ...) {
 
   # `tune` is setup to always maximize the objective function
   if (maximize) {
-    new_data <- new_data %>% mutate(objective = .mean + kappa * .sd)
+    new_data <- new_data |> mutate(objective = .mean + kappa * .sd)
   } else {
-    new_data <- new_data %>% mutate(objective = -(.mean + kappa * .sd))
+    new_data <- new_data |> mutate(objective = -(.mean + kappa * .sd))
   }
-  new_data %>% dplyr::select(objective)
+  new_data |> dplyr::select(objective)
 }

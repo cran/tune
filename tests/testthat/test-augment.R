@@ -1,9 +1,10 @@
-data(two_class_dat, package = "modeldata")
-
-# ------------------------------------------------------------------------------
-
 test_that("augment fit_resamples", {
-  lr_spec <- parsnip::logistic_reg() %>% parsnip::set_engine("glm")
+  skip_if_not_installed("modeldata")
+  data(two_class_dat, package = "modeldata")
+
+  # ------------------------------------------------------------------------------
+
+  lr_spec <- parsnip::logistic_reg() |> parsnip::set_engine("glm")
 
   set.seed(1)
   two_class_dat <- as.data.frame(two_class_dat)
@@ -40,8 +41,13 @@ test_that("augment fit_resamples", {
 
 
 test_that("augment fit_resamples", {
+  skip_if_not_installed("modeldata")
+  data(two_class_dat, package = "modeldata")
+
+  # ------------------------------------------------------------------------------
+
   skip_if(new_rng_snapshots)
-  lr_spec <- parsnip::logistic_reg() %>% parsnip::set_engine("glm")
+  lr_spec <- parsnip::logistic_reg() |> parsnip::set_engine("glm")
 
   set.seed(1)
   two_class_dat <- as.data.frame(two_class_dat)
@@ -79,8 +85,8 @@ test_that("augment fit_resamples", {
 test_that("augment tune_grid", {
   skip_if_not_installed("kernlab")
 
-  svm_spec <- parsnip::svm_linear(cost = tune(), margin = 0.1) %>%
-    parsnip::set_engine("kernlab") %>%
+  svm_spec <- parsnip::svm_linear(cost = tune(), margin = 0.1) |>
+    parsnip::set_engine("kernlab") |>
     parsnip::set_mode("regression")
   set.seed(1)
   cv1 <- rsample::vfold_cv(mtcars)
@@ -152,7 +158,12 @@ test_that("augment tune_grid", {
 # ------------------------------------------------------------------------------
 
 test_that("augment last_fit", {
-  lr_spec <- parsnip::logistic_reg() %>% parsnip::set_engine("glm")
+  skip_if_not_installed("modeldata")
+  data(two_class_dat, package = "modeldata")
+
+  # ------------------------------------------------------------------------------
+
+  lr_spec <- parsnip::logistic_reg() |> parsnip::set_engine("glm")
   set.seed(1)
   split <- rsample::initial_split(two_class_dat)
   fit_1 <- last_fit(lr_spec, Class ~ ., split = split)
@@ -160,7 +171,9 @@ test_that("augment last_fit", {
   aug_1 <- augment(fit_1)
   expect_true(nrow(aug_1) == nrow(rsample::assessment(split)))
   expect_equal(aug_1[["A"]], rsample::assessment(split)[["A"]])
-  expect_true(sum(!is.na(aug_1$.pred_class)) == nrow(rsample::assessment(split)))
+  expect_true(
+    sum(!is.na(aug_1$.pred_class)) == nrow(rsample::assessment(split))
+  )
   expect_true(sum(names(aug_1) == ".pred_class") == 1)
   expect_true(sum(names(aug_1) == ".pred_Class1") == 1)
   expect_true(sum(names(aug_1) == ".pred_Class2") == 1)

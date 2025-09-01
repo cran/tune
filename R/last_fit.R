@@ -38,7 +38,7 @@
 #'
 #' @template case-weights
 #' @template censored-regression
-#' 
+#'
 #' @section See also:
 #'
 #' [last_fit()] is closely related to [fit_best()]. They both
@@ -59,7 +59,7 @@
 #' model (and recipe, if any) that used the training set. Helper functions
 #' for formatting tuning results like [collect_metrics()] and
 #' [collect_predictions()] can be used with `last_fit()` output.
-#' @examplesIf tune:::should_run_examples()
+#' @examplesIf tune:::should_run_examples() & rlang::is_installed("splines2")
 #' library(recipes)
 #' library(rsample)
 #' library(parsnip)
@@ -67,10 +67,10 @@
 #' set.seed(6735)
 #' tr_te_split <- initial_split(mtcars)
 #'
-#' spline_rec <- recipe(mpg ~ ., data = mtcars) %>%
-#'   step_ns(disp)
+#' spline_rec <- recipe(mpg ~ ., data = mtcars) |>
+#'   step_spline_natural(disp)
 #'
-#' lin_mod <- linear_reg() %>%
+#' lin_mod <- linear_reg() |>
 #'   set_engine("lm")
 #'
 #' spline_res <- last_fit(lin_mod, spline_rec, split = tr_te_split)
@@ -86,8 +86,8 @@
 #'
 #' library(workflows)
 #' spline_wfl <-
-#'   workflow() %>%
-#'   add_recipe(spline_rec) %>%
+#'   workflow() |>
+#'   add_recipe(spline_rec) |>
 #'   add_model(lin_mod)
 #'
 #' last_fit(spline_wfl, split = tr_te_split)
@@ -98,11 +98,10 @@ last_fit <- function(object, ...) {
 
 #' @export
 last_fit.default <- function(object, ...) {
-  msg <- paste0(
-    "The first argument to [last_fit()] should be either ",
-    "a model or workflow."
+  cli::cli_abort(
+    "The first argument to {.fn last_fit} should be either a model or workflow,
+    not {.obj_type_friendly {object}}."
   )
-  rlang::abort(msg)
 }
 
 #' @export
@@ -117,16 +116,24 @@ last_fit.model_fit <- function(object, ...) {
   ))
 }
 
+tune_pp_msg <- "To tune a model specification, you must preprocess with a
+                formula, recipe, or {.pkg dplyr} selectors, not
+                {.obj_type_friendly {preprocessor}}."
+
 #' @export
 #' @rdname last_fit
-last_fit.model_spec <- function(object, preprocessor, split, ..., metrics = NULL,
-                                eval_time = NULL, control = control_last_fit(),
-                                add_validation_set = FALSE) {
+last_fit.model_spec <- function(
+  object,
+  preprocessor,
+  split,
+  ...,
+  metrics = NULL,
+  eval_time = NULL,
+  control = control_last_fit(),
+  add_validation_set = FALSE
+) {
   if (rlang::is_missing(preprocessor) || !is_preprocessor(preprocessor)) {
-    rlang::abort(paste(
-      "To tune a model spec, you must preprocess",
-      "with a formula or recipe"
-    ))
+    cli::cli_abort(tune_pp_msg)
   }
 
   control <- parsnip::condense_control(control, control_last_fit())
@@ -142,11 +149,11 @@ last_fit.model_spec <- function(object, preprocessor, split, ..., metrics = NULL
   }
 
   last_fit_workflow(
-    wflow, 
-    split = split, 
-    metrics = metrics, 
+    wflow,
+    split = split,
+    metrics = metrics,
     eval_time = eval_time,
-    control = control, 
+    control = control,
     add_validation_set = add_validation_set
   )
 }
@@ -154,32 +161,40 @@ last_fit.model_spec <- function(object, preprocessor, split, ..., metrics = NULL
 
 #' @rdname last_fit
 #' @export
-last_fit.workflow <- function(object, split, ..., metrics = NULL,
-                              eval_time = NULL, control = control_last_fit(),
-                              add_validation_set = FALSE) {
+last_fit.workflow <- function(
+  object,
+  split,
+  ...,
+  metrics = NULL,
+  eval_time = NULL,
+  control = control_last_fit(),
+  add_validation_set = FALSE
+) {
   empty_ellipses(...)
 
   control <- parsnip::condense_control(control, control_last_fit())
 
   last_fit_workflow(
-    object, 
-    split = split, 
-    metrics = metrics, 
+    object,
+    split = split,
+    metrics = metrics,
     eval_time = eval_time,
-    control = control, 
+    control = control,
     add_validation_set = add_validation_set
   )
 }
 
 
-last_fit_workflow <- function(object,
-                              split,
-                              metrics,
-                              eval_time = NULL,
-                              control,
-                              add_validation_set = FALSE,
-                              ...,
-                              call = rlang::caller_env()) {
+last_fit_workflow <- function(
+  object,
+  split,
+  metrics,
+  eval_time = NULL,
+  control,
+  add_validation_set = FALSE,
+  ...,
+  call = rlang::caller_env()
+) {
   rlang::check_dots_empty()
   check_no_tuning(object)
 
@@ -220,7 +235,7 @@ last_fit_workflow <- function(object,
 }
 
 
-prepare_validation_split <- function(split, add_validation_set){
+prepare_validation_split <- function(split, add_validation_set) {
   if (add_validation_set) {
     # equivalent to (unexported) rsample:::rsplit() without checks
     split <- structure(

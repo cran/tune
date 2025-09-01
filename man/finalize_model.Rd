@@ -4,6 +4,7 @@
 \alias{finalize_model}
 \alias{finalize_recipe}
 \alias{finalize_workflow}
+\alias{finalize_tailor}
 \title{Splice final parameters into objects}
 \usage{
 finalize_model(x, parameters)
@@ -11,9 +12,12 @@ finalize_model(x, parameters)
 finalize_recipe(x, parameters)
 
 finalize_workflow(x, parameters)
+
+finalize_tailor(x, parameters)
 }
 \arguments{
-\item{x}{A recipe, \code{parsnip} model specification, or workflow.}
+\item{x}{A recipe, \pkg{parsnip} model specification, \pkg{tailor}
+postprocessor, or workflow.}
 
 \item{parameters}{A list or 1-row tibble of parameter values. Note that the
 column names of the tibble should be the \code{id} fields attached to \code{tune()}.
@@ -38,7 +42,7 @@ knn_model <-
     neighbors = tune("K"),
     weight_func = tune(),
     dist_power = tune()
-  ) \%>\%
+  ) |>
   set_engine("kknn")
 
 lowest_rmse <- select_best(ames_grid_search, metric = "rmse")

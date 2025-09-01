@@ -14,10 +14,10 @@
 #' library(parsnip)
 #' library(dplyr)
 #'
-#' frequency_weights(1:10) %>%
+#' frequency_weights(1:10) |>
 #'   .use_case_weights_with_yardstick()
 #'
-#' importance_weights(seq(1, 10, by = .1))%>%
+#' importance_weights(seq(1, 10, by = .1))|>
 #'   .use_case_weights_with_yardstick()
 .use_case_weights_with_yardstick <- function(x) {
   UseMethod(".use_case_weights_with_yardstick")
@@ -26,15 +26,17 @@
 #' @export
 .use_case_weights_with_yardstick.default <- function(x) {
   message <- c(
-    paste0("Unknown case weights object with class <", class(x)[[1]], ">. "),
+    "An object with {.cls hardhat_case_weights} was expected, not
+    {.obj_type_friendly {x}}.",
     i = paste0(
-      "Define a `.use_case_weights_with_yardstick()` method for this type to ",
-      "declare whether or not these case weights should be passed on to yardstick."
+      "Define a {.fn .use_case_weights_with_yardstick} method for this type to ",
+      "declare whether or not these case weights should be passed on to
+       {.pkg yardstick}."
     ),
-    i = "See `?.use_case_weights_with_yardstick` for more information."
+    i = "See {.help .use_case_weights_with_yardstick} for more information."
   )
 
-  rlang::abort(message)
+  cli::cli_abort(message)
 }
 
 #' @rdname dot-use_case_weights_with_yardstick
@@ -55,18 +57,32 @@ extract_case_weights <- function(data, workflow) {
   col <- extract_case_weights_col(workflow)
 
   if (!rlang::is_quosure(col)) {
-    rlang::abort("`col` must exist and be a quosure at this point.", .internal = TRUE)
+    cli::cli_abort(
+      "{.arg col} must exist and be a quosure at this point.",
+      .internal = TRUE
+    )
   }
 
   loc <- eval_select_case_weights(col, data)
+  if (length(loc) != 1) {
+    # Can't happen now, make sure it doesn't happen in the future
+    cli::cli_abort(
+      "Only a single case weight column is allowed. {length(loc)}
+                   were found: {.val {names(loc)}}."
+    )
+  }
 
-  case_weights <- data[[loc]]
+  if (!tibble::is_tibble(data)) {
+    data <- tibble::as_tibble(data)
+  }
+  case_weights <- data[, loc]
+  case_weights <- stats::setNames(case_weights, case_weights_column_name())
 
-  if (!hardhat::is_case_weights(case_weights)) {
-    rlang::abort(paste0(
-      "Case weights must be a supported case weights type, as determined by ",
-      "`hardhat::is_case_weights()`."
-    ))
+  if (!hardhat::is_case_weights(data[[names(loc)]])) {
+    cli::cli_abort(
+      "Case weights must be a supported case weights type, as determined by
+      {.fn hardhat::is_case_weights}."
+    )
   }
 
   case_weights
@@ -77,10 +93,12 @@ extract_case_weights_col <- function(x) {
   x$pre$actions$case_weights$col
 }
 
-eval_select_case_weights <- function(col,
-                                     data,
-                                     ...,
-                                     call = rlang::caller_env()) {
+eval_select_case_weights <- function(
+  col,
+  data,
+  ...,
+  call = rlang::caller_env()
+) {
   # workflows:::eval_select_case_weights()
 
   rlang::check_dots_empty()
@@ -96,12 +114,11 @@ eval_select_case_weights <- function(col,
   )
 
   if (length(loc) != 1L) {
-    message <- paste0(
-      "`col` must specify exactly one column from ",
-      "`data` to extract case weights from."
+    cli::cli_abort(
+      "{.arg col} must specify exactly one column from {.arg data} to
+       extract case weights from.",
+      call = call
     )
-
-    rlang::abort(message, call = call)
   }
 
   loc

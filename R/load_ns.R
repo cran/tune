@@ -53,15 +53,16 @@ full_load <- c("kknn", "earth")
     did_load <- purrr::map_lgl(x, requireNamespace, quietly = TRUE)
     if (any(!did_load)) {
       bad <- x[!did_load]
-      msg <- paste0("'", bad, "'", collapse = ", ")
-      rlang::abort(paste("These packages could not be loaded:", msg))
+      cli::cli_abort("The package{?s} {.pkg {bad}} could not be loaded.")
     }
   }
 
   if (length(x_full) > 0) {
     purrr::map(
       x_full,
-      ~ try(suppressPackageStartupMessages(attachNamespace(.x)), silent = TRUE)
+      \(.x) {
+        try(suppressPackageStartupMessages(attachNamespace(.x)), silent = TRUE)
+      }
     )
   }
 
@@ -69,6 +70,17 @@ full_load <- c("kknn", "earth")
 }
 
 infra_pkgs <- c(
-  "tune", "recipes", "parsnip", "yardstick", "purrr", "dplyr", "tibble",
-  "dials", "rsample", "workflows", "tidyr", "rlang", "vctrs"
+  "tune",
+  "recipes",
+  "parsnip",
+  "yardstick",
+  "purrr",
+  "dplyr",
+  "tibble",
+  "dials",
+  "rsample",
+  "workflows",
+  "tidyr",
+  "rlang",
+  "vctrs"
 )
